@@ -123,8 +123,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const mentor = mentorUser || get().currentUser;
     const shareableUrl = `${window.location.origin}/join/${code}?pin=${pin}`;
 
+    const sessionUuid = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : 'a0000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0');
+
     const newSession: RoomSession = {
-      id: `sess_${Date.now()}`,
+      id: sessionUuid,
       code,
       pin,
       title: title || `${language.toUpperCase()} Live Classroom`,
@@ -145,6 +149,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     // Immediately insert into Supabase table so incognito & external users can join!
     sessionService.createSession({
+      id: sessionUuid,
       code,
       pin,
       title: newSession.title,

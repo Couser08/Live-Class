@@ -60,7 +60,7 @@ export const SessionChatPanel: React.FC = () => {
 
   // Load chat messages and listen to broadcast
   useEffect(() => {
-    sessionService.getMessages(sessionId).then((data) => setMessages(data));
+    sessionService.getMessages(sessionId, currentSession?.code).then((data) => setMessages(data));
 
     if (currentSession?.code) {
       const unsubscribe = sessionService.subscribeToRoom(currentSession.code, {
@@ -111,7 +111,7 @@ export const SessionChatPanel: React.FC = () => {
     setMessages((prev) => (prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]));
 
     // Persist to Supabase and local storage
-    sessionService.sendMessage(newMsg);
+    sessionService.sendMessage(newMsg, currentSession?.code);
 
     // Broadcast message cross-tab / supabase realtime
     if (currentSession?.code) {

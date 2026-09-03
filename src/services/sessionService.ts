@@ -69,12 +69,14 @@ interface ManagedRoomChannel {
 }
 
 const managedRooms = new Map<string, ManagedRoomChannel>();
+const roomMessages = new Map<string, ChatMessageItem[]>();
 
 export const sessionService = {
   /**
    * Create and register session in Supabase and broadcast
    */
   async createSession(session: {
+    id?: string;
     code: string;
     pin: string;
     title: string;
@@ -87,6 +89,7 @@ export const sessionService = {
     if (isSupabaseConfigured) {
       try {
         await supabase.from('sessions').upsert({
+          ...(session.id ? { id: session.id } : {}),
           code: cleanCode,
           pin: session.pin,
           title: session.title,
@@ -198,6 +201,11 @@ export const sessionService = {
           if (data.timestamp) entry.lastCodeTimestamp = data.timestamp;
           entry.listeners.forEach((cb) => { cb.onCodeStream?.(data); cb.onCodeUpdate?.(data); });
         } else if (type === 'chat' && data) {
+          const mList = roomMessages.get(cleanCode) || [];
+          if (!mList.some((m) => m.id === data.id)) {
+            mList.push(data);
+            roomMessages.set(cleanCode, mList);
+          }
           entry.listeners.forEach((cb) => cb.onChatMessage?.(data));
         } else if (type === 'notes' && data?.content !== undefined) {
           entry.listeners.forEach((cb) => cb.onNotesStream?.(data.content));
@@ -345,57 +353,113 @@ export const sessionService = {
   /**
    * Fetch real-time chat messages for a session
    */
-  async getMessages(sessionId: string): Promise<ChatMessageItem[]> {
+  async getMessages(sessionId: string, roomCode?: string): Promise<ChatMessageItem[]> {
+    const cleanCode = (roomCode || '').trim().toUpperCase();
+    const resultMessages: ChatMessageItem[] = [];
+    const seenIds = new Set<string>();
+
+    const appendUnique = (list: ChatMessageItem[]) => {
+      list.forEach((m) => {
+        if (!seenIds.has(m.id)) {
+          seenIds.add(m.id);
+          resultMessages.push(m);
+        }
+      });
+    };
+
+    if (cleanCode && roomMessages.has(cleanCode)) {
+      appendUnique(roomMessages.get(cleanCode)!);
+    }
+
+    try {
+      const keys = [cleanCode ? `cb_msgs_${cleanCode}` : null, `cb_msgs_${sessionId}`].filter(Boolean) as string[];
+      keys.forEach((key) => {
+        const raw = localStorage.getItem(key);
+        if (raw) appendUnique(JSON.parse(raw));
+      });
+    } catch {}
+
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase.from('session_messages').select('*').eq('session_id', sessionId).order('created_at', { ascending: true });
-        if (!error && data) {
-          return data.map((d) => ({
-            id: d.id,
-            sessionId: d.session_id,
-            senderId: d.sender_id,
-            senderName: d.sender_name,
-            senderRole: d.sender_role,
-            senderAvatar: d.sender_avatar,
-            content: d.content,
-            createdAt: new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            isHighlighted: d.is_highlighted,
-          }));
+        let targetUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId) ? sessionId : null;
+        if (!targetUuid && cleanCode) {
+          const { data: sRow } = await supabase.from('sessions').select('id').eq('code', cleanCode).maybeSingle();
+          if (sRow?.id) targetUuid = sRow.id;
+        }
+
+        if (targetUuid) {
+          const { data, error } = await supabase.from('session_messages').select('*').eq('session_id', targetUuid).order('created_at', { ascending: true });
+          if (!error && data) {
+            appendUnique(data.map((d) => ({
+              id: d.id,
+              sessionId: d.session_id,
+              senderId: d.sender_id,
+              senderName: d.sender_name,
+              senderRole: d.sender_role,
+              senderAvatar: d.sender_avatar,
+              content: d.content,
+              createdAt: new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isHighlighted: d.is_highlighted,
+            })));
+          }
         }
       } catch {}
     }
-    try {
-      const saved = localStorage.getItem(`cb_msgs_${sessionId}`);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return [];
+
+    return resultMessages;
   },
 
-  async sendMessage(msg: Omit<ChatMessageItem, 'id' | 'createdAt'>): Promise<ChatMessageItem> {
+  async sendMessage(msg: Omit<ChatMessageItem, 'id' | 'createdAt'>, roomCode?: string): Promise<ChatMessageItem> {
     const newMsg: ChatMessageItem = {
       ...msg,
-      id: `msg_${Date.now()}`,
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
+    const cleanCode = (roomCode || '').trim().toUpperCase();
+
+    if (cleanCode) {
+      const mList = roomMessages.get(cleanCode) || [];
+      if (!mList.some((m) => m.id === newMsg.id)) {
+        mList.push(newMsg);
+        roomMessages.set(cleanCode, mList);
+      }
+    }
 
     if (isSupabaseConfigured) {
       try {
-        await supabase.from('session_messages').insert({
-          session_id: msg.sessionId,
-          sender_id: msg.senderId || null,
-          sender_name: msg.senderName,
-          sender_role: msg.senderRole,
-          sender_avatar: msg.senderAvatar,
-          content: msg.content,
-        });
-      } catch {}
+        let targetUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(msg.sessionId)
+          ? msg.sessionId
+          : null;
+
+        if (!targetUuid && cleanCode) {
+          const { data: sRow } = await supabase.from('sessions').select('id').eq('code', cleanCode).maybeSingle();
+          if (sRow?.id) targetUuid = sRow.id;
+        }
+
+        if (targetUuid) {
+          await supabase.from('session_messages').insert({
+            session_id: targetUuid,
+            sender_id: msg.senderId || null,
+            sender_name: msg.senderName,
+            sender_role: msg.senderRole,
+            sender_avatar: msg.senderAvatar,
+            content: msg.content,
+          });
+        }
+      } catch (e) {
+        console.warn('Supabase sendMessage error:', e);
+      }
     }
 
     try {
-      const key = `cb_msgs_${msg.sessionId}`;
-      const list = JSON.parse(localStorage.getItem(key) || '[]');
-      list.push(newMsg);
-      localStorage.setItem(key, JSON.stringify(list));
+      const keys = [cleanCode ? `cb_msgs_${cleanCode}` : null, `cb_msgs_${msg.sessionId}`].filter(Boolean) as string[];
+      keys.forEach((key) => {
+        const list: any[] = JSON.parse(localStorage.getItem(key) || '[]');
+        if (!list.some((m: any) => m.id === newMsg.id)) {
+          list.push(newMsg);
+          localStorage.setItem(key, JSON.stringify(list));
+        }
+      });
     } catch {}
 
     return newMsg;

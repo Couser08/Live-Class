@@ -196,16 +196,18 @@ export function executeCCode(
     // Construct sandboxed execution wrapper
     const runnerScript = `
       "use strict";
+      const print = typeof printf === 'function' ? printf : function() {};
+      const alert = function() {};
       ${jsCode}
       if (typeof main === 'function') {
         main();
       }
     `;
 
-    // Execute within sandbox
+    // Execute within sandbox - explicitly shadow 'print' and 'window' so browser print dialog is never triggered
     // eslint-disable-next-line no-new-func
-    const executor = new Function('printf', 'scanf', 'pow', 'sqrt', 'abs', 'floor', 'ceil', runnerScript);
-    executor(customPrintf, customScanf, pow, sqrt, abs, floor, ceil);
+    const executor = new Function('printf', 'print', 'scanf', 'pow', 'sqrt', 'abs', 'floor', 'ceil', 'window', runnerScript);
+    executor(customPrintf, customPrintf, customScanf, pow, sqrt, abs, floor, ceil, { print: customPrintf, alert: () => {} });
 
     const duration = Math.round(performance.now() - startTime);
 

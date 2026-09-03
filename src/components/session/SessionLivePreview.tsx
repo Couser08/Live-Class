@@ -105,6 +105,13 @@ export const SessionLivePreview: React.FC<SessionLivePreviewProps> = ({ refreshK
         combinedDoc = `<style>\n${cssContent}\n</style>\n` + combinedDoc;
       }
 
+      const safePrintShim = `<script>window.print = function() { console.log.apply(console, arguments); };</script>`;
+      if (combinedDoc.includes('</head>')) {
+        combinedDoc = combinedDoc.replace('</head>', `${safePrintShim}\n</head>`);
+      } else {
+        combinedDoc = `${safePrintShim}\n${combinedDoc}`;
+      }
+
       if (combinedDoc.includes('script.js')) {
         combinedDoc = combinedDoc.replace(
           /<script[^>]*src=["']script\.js["'][^>]*><\/script>/gi,
@@ -127,6 +134,10 @@ export const SessionLivePreview: React.FC<SessionLivePreviewProps> = ({ refreshK
   <style>
     body { font-family: system-ui, sans-serif; padding: 20px; color: #0f172a; margin: 0; }
   </style>
+  <script>
+    window.print = function() { console.log.apply(console, arguments); };
+    var print = window.print;
+  </script>
 </head>
 <body>
   <div id="app"></div>

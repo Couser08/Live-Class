@@ -9,6 +9,7 @@ import { MessageSquare, X } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
 import { useAuthStore, isMentorEmail } from '../stores/authStore';
 import { sessionService } from '../services/sessionService';
+import { cn } from '../lib/utils';
 
 export const SessionWorkspace: React.FC = () => {
   const currentSession = useSessionStore((state) => state.currentSession);
@@ -119,11 +120,14 @@ export const SessionWorkspace: React.FC = () => {
 
       {/* Floating Chat Widget */}
       <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
-        {isChatOpen && (
-          <div className="mb-4 w-[360px] sm:w-[400px] h-[550px] max-h-[calc(100vh-120px)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] rounded-3xl flex flex-col animate-in slide-in-from-bottom-5 fade-in duration-200 overflow-hidden border border-slate-100 dark:border-slate-800/80 bg-white dark:bg-[#111622]">
-            <SessionChatPanel />
-          </div>
-        )}
+        <div
+          className={cn(
+            "mb-4 w-[360px] sm:w-[400px] h-[550px] max-h-[calc(100vh-120px)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] rounded-3xl flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800/80 bg-white dark:bg-[#111622] transition-all duration-200",
+            isChatOpen ? "flex animate-in slide-in-from-bottom-5 fade-in" : "hidden pointer-events-none"
+          )}
+        >
+          <SessionChatPanel />
+        </div>
         <button
           onClick={handleToggleChat}
           className="w-14 h-14 rounded-2xl bg-[#4F46E5] hover:bg-[#4338CA] text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer relative"

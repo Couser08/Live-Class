@@ -1,5 +1,10 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
-import { highlightCode } from '../../lib/shiki';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import CodeMirror, { ReactCodeMirrorRef } from '@uiw/react-codemirror';
+import { cpp } from '@codemirror/lang-cpp';
+import { html } from '@codemirror/lang-html';
+import { javascript } from '@codemirror/lang-javascript';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView } from '@codemirror/view';
 import { useCodeStore } from '../../stores/codeStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useSessionStore } from '../../stores/sessionStore';
@@ -11,70 +16,153 @@ import { cn } from '../../lib/utils';
 
 export const InteractiveCodeEditor: React.FC = () => {
   const { mentorCode, setMentorCode, activeLanguage, files, activeFileId, runCode, formatCurrentCode } = useCodeStore();
-  const { editorFontSize, lineNumbers, autoCloseBrackets, highlightActiveLine, editorTheme } = useSettingsStore();
+  const { editorFontSize, lineNumbers, autoCloseBrackets, highlightActiveLine, editorTheme, tabSize } = useSettingsStore();
   const { currentSession, userRoleInSession, isSandboxMode, toggleSandboxMode, mentorCursorPos, setMentorCursor } = useSessionStore();
 
   const isMentor = userRoleInSession === 'mentor';
   const isReadOnly = !isMentor && !isSandboxMode;
 
   const activeFile = files.find((f) => f.id === activeFileId) || files[0];
-  const fileLang: any = activeFile?.language || activeLanguage;
+  const fileLang: string = activeFile?.language || activeLanguage;
 
-  const [highlightedHtml, setHighlightedHtml] = useState<string>('');
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
   const [isSaved, setIsSaved] = useState(true);
   const [isFocused, setIsFocused] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const preRef = useRef<HTMLPreElement>(null);
-  const gutterRef = useRef<HTMLDivElement>(null);
-  const saveTimeoutRef = useRef<number | null>(null);
-  const broadcastTimeoutRef = useRef<number | null>(null);
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const saveTimerRef = useRef<number | null>(null);
+  const broadcastTimerRef = useRef<number | null>(null);
 
-  // 1. Precise cursor position ref (selectionStart & selectionEnd)
-  const cursorSelectionRef = useRef<{ start: number; end: number } | null>(null);
-
-  // 2. Restore cursor synchronously before browser paint on any state update
-  useLayoutEffect(() => {
-    if (cursorSelectionRef.current && textareaRef.current && document.activeElement === textareaRef.current) {
-      const { start, end } = cursorSelectionRef.current;
-      const maxLen = textareaRef.current.value.length;
-      const safeStart = Math.min(start, maxLen);
-      const safeEnd = Math.min(end, maxLen);
-      textareaRef.current.setSelectionRange(safeStart, safeEnd);
-    }
-  }, [mentorCode]);
-
-  // 3. Debounced syntax highlighting (150ms) to prevent re-render thrashing on every keystroke
-  useEffect(() => {
-    let isMounted = true;
-    const timer = setTimeout(() => {
-      highlightCode(mentorCode, fileLang, editorTheme).then((html) => {
-        if (isMounted) setHighlightedHtml(html);
+  // Micro-throttled real-time broadcast to connected students (40ms)
+  const broadcastLatestCode = useCallback((code: string, pos: { line: number; col: number }) => {
+    if (!isMentor || !currentSession?.code) return;
+    if (broadcastTimerRef.current) window.clearTimeout(broadcastTimerRef.current);
+    broadcastTimerRef.current = window.setTimeout(() => {
+      sessionService.broadcastCode(currentSession.code, {
+        code,
+        language: fileLang,
+        cursorPos: pos,
+        timestamp: Date.now(),
       });
-    }, 150);
+    }, 40);
+  }, [isMentor, currentSession?.code, fileLang]);
 
-    return () => {
-      isMounted = false;
-      clearTimeout(timer);
-    };
-  }, [mentorCode, fileLang, editorTheme]);
+  // Code change dispatcher
+  const handleCodeChange = useCallback((val: string) => {
+    setMentorCode(val);
+    setIsSaved(false);
 
-  // Ensure workspace language matches current session language
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      setIsSaved(true);
+    }, 400);
+
+    broadcastLatestCode(val, cursorPos);
+  }, [setMentorCode, broadcastLatestCode, cursorPos]);
+
+  // Language grammar extension selector
+  const languageExtension = useMemo(() => {
+    switch (fileLang.toLowerCase()) {
+      case 'c':
+      case 'cpp':
+        return cpp();
+      case 'html':
+        return html();
+      case 'javascript':
+      case 'js':
+      case 'typescript':
+      case 'ts':
+        return javascript();
+      default:
+        return cpp();
+    }
+  }, [fileLang]);
+
+  // Custom typography & line-height styling extension
+  const customThemeExtension = useMemo(() => {
+    return EditorView.theme({
+      '&': {
+        height: '100%',
+        fontSize: `${editorFontSize}px`,
+        fontFamily: 'Consolas, "Fira Code", "Courier New", Courier, monospace',
+      },
+      '.cm-scroller': {
+        fontFamily: 'Consolas, "Fira Code", "Courier New", Courier, monospace',
+        lineHeight: '22px',
+        overflow: 'auto',
+      },
+      '.cm-content': {
+        padding: '14px 0',
+        caretColor: editorTheme === 'github-light' ? '#4f46e5' : '#a5b4fc',
+      },
+      '.cm-gutters': {
+        backgroundColor: editorTheme === 'github-light' ? '#f8fafc' : 'rgba(0, 0, 0, 0.25)',
+        color: editorTheme === 'github-light' ? '#94a3b8' : '#64748b',
+        borderRight: editorTheme === 'github-light' ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)',
+        paddingTop: '14px',
+        fontSize: '12px',
+      },
+      '.cm-activeLineGutter': {
+        backgroundColor: 'rgba(99, 102, 241, 0.15)',
+        color: editorTheme === 'github-light' ? '#4f46e5' : '#818cf8',
+        fontWeight: 'bold',
+      },
+      '.cm-activeLine': {
+        backgroundColor: 'rgba(99, 102, 241, 0.08)',
+      },
+      '.cm-selectionBackground, ::selection': {
+        backgroundColor: 'rgba(99, 102, 241, 0.35) !important',
+      },
+      '&.cm-focused .cm-cursor': {
+        borderLeftColor: editorTheme === 'github-light' ? '#4f46e5' : '#a5b4fc',
+        borderLeftWidth: '2px',
+      },
+    });
+  }, [editorFontSize, editorTheme]);
+
+  // Combine extensions
+  const extensions = useMemo(() => {
+    return [languageExtension, customThemeExtension];
+  }, [languageExtension, customThemeExtension]);
+
+  // Global editor shortcuts (⌘K, ⌘↵, ⌥⇧F)
+  const handleContainerKeyDown = (e: React.KeyboardEvent) => {
+    // ⌘K / Ctrl+K: Command Palette
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      setIsCommandPaletteOpen((prev) => !prev);
+      return;
+    }
+
+    // ⌘↵ / Ctrl+Enter: Run Code
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      runCode();
+      return;
+    }
+
+    // ⌥⇧F / Alt+Shift+F: Format Code
+    if ((e.altKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+      e.preventDefault();
+      formatCurrentCode();
+      return;
+    }
+  };
+
+  // Synchronize language template with session room
   useEffect(() => {
     if (currentSession?.language && useCodeStore.getState().activeLanguage !== currentSession.language) {
       useCodeStore.getState().setLanguage(currentSession.language);
     }
   }, [currentSession?.language]);
 
-  // Real-time synchronization: Students listen to Mentor broadcasts
+  // Real-time synchronization: Students follow mentor broadcast
   useEffect(() => {
     if (!currentSession?.code) return;
 
     const unsubscribe = sessionService.subscribeToRoom(currentSession.code, {
       onCodeStream: (payload) => {
-        // If student is following mentor, sync code immediately
         if (!isMentor && !isSandboxMode) {
           setMentorCode(payload.code);
           if (payload.cursorPos) {
@@ -86,173 +174,7 @@ export const InteractiveCodeEditor: React.FC = () => {
     });
 
     return unsubscribe;
-  }, [currentSession?.code, isMentor, isSandboxMode]);
-
-  // Handle scroll synchronization
-  const handleScroll = () => {
-    if (textareaRef.current && preRef.current) {
-      preRef.current.scrollTop = textareaRef.current.scrollTop;
-      preRef.current.scrollLeft = textareaRef.current.scrollLeft;
-    }
-    if (textareaRef.current && gutterRef.current) {
-      gutterRef.current.scrollTop = textareaRef.current.scrollTop;
-    }
-  };
-
-  const updateCursorPosition = (val: string, selectionStart: number) => {
-    const linesUpToCursor = val.substring(0, selectionStart).split('\n');
-    const newPos = {
-      line: linesUpToCursor.length,
-      col: linesUpToCursor[linesUpToCursor.length - 1].length + 1,
-    };
-    setCursorPos(newPos);
-
-    // Mentor broadcasts cursor movement
-    if (isMentor && currentSession?.code) {
-      sessionService.broadcastCode(currentSession.code, {
-        code: val,
-        language: fileLang,
-        cursorPos: newPos,
-        timestamp: Date.now(),
-      });
-    }
-  };
-
-    // Micro-throttled real-time broadcast to connected students
-    const broadcastLatestCode = (code: string, pos: { line: number; col: number }) => {
-      if (!isMentor || !currentSession?.code) return;
-      if (broadcastTimeoutRef.current) window.clearTimeout(broadcastTimeoutRef.current);
-      broadcastTimeoutRef.current = window.setTimeout(() => {
-        sessionService.broadcastCode(currentSession.code, {
-          code,
-          language: fileLang,
-          cursorPos: pos,
-          timestamp: Date.now(),
-        });
-      }, 40);
-    };
-
-    // Keyboard shortcut listener
-    const handleKeyDown = useCallback(
-      (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (isReadOnly) return;
-
-        const textarea = textareaRef.current;
-        if (!textarea) return;
-
-        // ⌘K / Ctrl+K: Command Palette
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-          e.preventDefault();
-          setIsCommandPaletteOpen((prev) => !prev);
-          return;
-        }
-
-        // ⌘↵ / Ctrl+Enter: Run Code
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-          e.preventDefault();
-          runCode();
-          return;
-        }
-
-        // ⌥⇧F / Alt+Shift+F: Format Code
-        if ((e.altKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
-          e.preventDefault();
-          formatCurrentCode();
-          return;
-        }
-
-        // Tab key (2 spaces)
-        if (e.key === 'Tab') {
-          e.preventDefault();
-          const start = textarea.selectionStart;
-          const end = textarea.selectionEnd;
-          const newValue = mentorCode.substring(0, start) + '  ' + mentorCode.substring(end);
-          
-          cursorSelectionRef.current = { start: start + 2, end: start + 2 };
-          setMentorCode(newValue);
-
-          const linesUpToCursor = newValue.substring(0, start + 2).split('\n');
-          const newPos = {
-            line: linesUpToCursor.length,
-            col: linesUpToCursor[linesUpToCursor.length - 1].length + 1,
-          };
-          setCursorPos(newPos);
-          broadcastLatestCode(newValue, newPos);
-          return;
-        }
-
-        // Auto-close brackets & quotes
-        if (autoCloseBrackets) {
-          const pairs: Record<string, string> = {
-            '(': ')',
-            '{': '}',
-            '[': ']',
-            '"': '"',
-            "'": "'",
-          };
-
-          if (pairs[e.key]) {
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            const closeChar = pairs[e.key];
-            const newValue = mentorCode.substring(0, start) + e.key + closeChar + mentorCode.substring(end);
-
-            e.preventDefault();
-            cursorSelectionRef.current = { start: start + 1, end: start + 1 };
-            setMentorCode(newValue);
-
-            const linesUpToCursor = newValue.substring(0, start + 1).split('\n');
-            const newPos = {
-              line: linesUpToCursor.length,
-              col: linesUpToCursor[linesUpToCursor.length - 1].length + 1,
-            };
-            setCursorPos(newPos);
-            broadcastLatestCode(newValue, newPos);
-            return;
-          }
-        }
-      },
-      [mentorCode, setMentorCode, runCode, formatCurrentCode, autoCloseBrackets, isReadOnly, isMentor, currentSession, fileLang, cursorPos]
-    );
-
-    const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      if (isReadOnly) return;
-
-      const target = e.target;
-      const val = target.value;
-      const start = target.selectionStart;
-      const end = target.selectionEnd;
-
-      // 1. Capture cursor position before state update
-      cursorSelectionRef.current = { start, end };
-
-      setMentorCode(val);
-      setIsSaved(false);
-      updateCursorPosition(val, start);
-
-      const linesUpToCursor = val.substring(0, start).split('\n');
-      const newPos = {
-        line: linesUpToCursor.length,
-        col: linesUpToCursor[linesUpToCursor.length - 1].length + 1,
-      };
-      broadcastLatestCode(val, newPos);
-
-      if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = window.setTimeout(() => {
-        setIsSaved(true);
-      }, 400);
-    };
-
-    const handleSelectionSync = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-      const target = e.currentTarget;
-      cursorSelectionRef.current = {
-        start: target.selectionStart,
-        end: target.selectionEnd,
-      };
-      updateCursorPosition(mentorCode, target.selectionStart);
-    };
-
-  const lines = mentorCode.split('\n');
+  }, [currentSession?.code, isMentor, isSandboxMode, setMentorCode, setMentorCursor]);
 
   const getThemeBg = () => {
     switch (editorTheme) {
@@ -263,15 +185,17 @@ export const InteractiveCodeEditor: React.FC = () => {
       case 'dracula':
         return 'bg-[#282a36] border-[#44475a]';
       default:
-        return 'bg-[#111726] border-slate-800'; // high-contrast dark
+        return 'bg-[#111726] border-slate-800';
     }
   };
 
   const themeClasses = getThemeBg();
-  const effectiveActiveLine = isMentor ? cursorPos.line : mentorCursorPos.line;
 
   return (
-    <div className={cn("flex-1 rounded-2xl shadow-xl flex flex-col overflow-hidden relative border", themeClasses)}>
+    <div
+      onKeyDown={handleContainerKeyDown}
+      className={cn("flex-1 rounded-2xl shadow-xl flex flex-col overflow-hidden relative border", themeClasses)}
+    >
       {/* Role State Banner */}
       {!isMentor && (
         <div
@@ -292,7 +216,7 @@ export const InteractiveCodeEditor: React.FC = () => {
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
               <Lock className="w-3.5 h-3.5 text-indigo-300" />
-              <span className="font-bold text-white">Live Following Mentor: {currentSession?.mentor?.name || 'Rahul Sharma'}</span>
+              <span className="font-bold text-white">Live Following Mentor: {currentSession?.mentor?.name || 'Mentor'}</span>
               <span className="text-[11px] text-indigo-300/80 hidden sm:inline">(Editor is locked to live broadcast)</span>
             </div>
           )}
@@ -331,121 +255,45 @@ export const InteractiveCodeEditor: React.FC = () => {
         </div>
       )}
 
-      {/* Code Editor Body */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Line Numbers Gutter */}
-        {lineNumbers && (
-          <div
-            ref={gutterRef}
-            className={cn(
-              "w-11 py-3 text-right pr-3 font-mono text-[12px] leading-[22px] select-none overflow-hidden shrink-0 border-r",
-              editorTheme === 'github-light'
-                ? 'bg-slate-50 text-slate-400 border-slate-200'
-                : 'bg-black/30 text-slate-500 border-white/5'
-            )}
-          >
-            {lines.map((_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  'h-[22px] transition-colors',
-                  effectiveActiveLine === i + 1
-                    ? (editorTheme === 'github-light' ? 'text-indigo-600 font-bold' : 'text-indigo-400 font-bold')
-                    : ''
-                )}
-              >
-                {i + 1}
-              </div>
-            ))}
-          </div>
-        )}
-
-          {/* Synchronized Code Canvas */}
-          <div className="flex-1 relative overflow-hidden bg-transparent">
-            {/* Active Line Highlight Gutter */}
-            {highlightActiveLine && (
-              <div
-                className="absolute left-0 right-0 bg-indigo-500/10 border-y border-indigo-500/25 pointer-events-none transition-all duration-75"
-                style={{
-                  top: `${(effectiveActiveLine - 1) * 22 + 12}px`,
-                  height: '22px',
-                }}
-              />
-            )}
-
-            {/* Shiki Pre-wrap Syntax Layer */}
-            <pre
-              ref={preRef}
-              aria-hidden="true"
-              className={cn(
-                'absolute inset-0 overflow-hidden pointer-events-none select-none',
-                editorTheme === 'github-light' ? 'text-slate-800' : 'text-slate-200'
-              )}
-              style={{
-                fontFamily: 'Consolas, "Fira Code", "Courier New", Courier, monospace',
-                fontSize: `${editorFontSize}px`,
-                lineHeight: '22px',
-                letterSpacing: '0px',
-                wordSpacing: '0px',
-                tabSize: 2,
-                fontVariantLigatures: 'none',
-                WebkitFontVariantLigatures: 'none',
-                fontFeatureSettings: '"liga" 0, "calt" 0',
-                padding: '12px',
-                margin: 0,
-                border: '0px solid transparent',
-                boxSizing: 'border-box',
-                whiteSpace: useSettingsStore.getState().wordWrap ? 'pre-wrap' : 'pre',
-                wordBreak: useSettingsStore.getState().wordWrap ? 'break-all' : 'normal',
-                overflowWrap: useSettingsStore.getState().wordWrap ? 'anywhere' : 'normal',
-              }}
-              dangerouslySetInnerHTML={{
-                __html: highlightedHtml || `<code>${mentorCode}</code>`,
-              }}
-            />
-
-            {/* Interactive Textarea Overlay */}
-            <textarea
-              ref={textareaRef}
-              value={mentorCode}
-              onChange={handleCodeChange}
-              onKeyDown={handleKeyDown}
-              onSelect={handleSelectionSync}
-              onClick={handleSelectionSync}
-              onKeyUp={handleSelectionSync}
-              onScroll={handleScroll}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              readOnly={isReadOnly}
-              spellCheck={false}
-              autoCapitalize="off"
-              autoComplete="off"
-              autoCorrect="off"
-              className={cn(
-                'absolute inset-0 w-full h-full overflow-auto bg-transparent text-transparent resize-none focus:outline-none focus:ring-0 z-10 selection:bg-indigo-500/35',
-                isReadOnly ? 'cursor-default' : 'cursor-text',
-                editorTheme === 'github-light' ? 'caret-black' : 'caret-white'
-              )}
-              style={{
-                fontFamily: 'Consolas, "Fira Code", "Courier New", Courier, monospace',
-                fontSize: `${editorFontSize}px`,
-                lineHeight: '22px',
-                letterSpacing: '0px',
-                wordSpacing: '0px',
-                tabSize: 2,
-                fontVariantLigatures: 'none',
-                WebkitFontVariantLigatures: 'none',
-                fontFeatureSettings: '"liga" 0, "calt" 0',
-                padding: '12px',
-                margin: 0,
-                border: '0px solid transparent',
-                boxSizing: 'border-box',
-                whiteSpace: useSettingsStore.getState().wordWrap ? 'pre-wrap' : 'pre',
-                wordBreak: useSettingsStore.getState().wordWrap ? 'break-all' : 'normal',
-                overflowWrap: useSettingsStore.getState().wordWrap ? 'anywhere' : 'normal',
-              }}
-            />
-          </div>
+      {/* Single-Layer Professional CodeMirror Canvas */}
+      <div className="flex-1 flex overflow-hidden relative">
+        <CodeMirror
+          ref={editorRef}
+          value={mentorCode}
+          height="100%"
+          theme={editorTheme === 'github-light' ? 'light' : oneDark}
+          extensions={extensions}
+          readOnly={isReadOnly}
+          editable={!isReadOnly}
+          onChange={(val) => {
+            handleCodeChange(val);
+          }}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onUpdate={(viewUpdate) => {
+            if (viewUpdate.selectionSet) {
+              const head = viewUpdate.state.selection.main.head;
+              const line = viewUpdate.state.doc.lineAt(head);
+              const newPos = { line: line.number, col: head - line.from + 1 };
+              setCursorPos(newPos);
+              broadcastLatestCode(mentorCode, newPos);
+            }
+          }}
+          basicSetup={{
+            lineNumbers: lineNumbers,
+            highlightActiveLineGutter: highlightActiveLine,
+            highlightActiveLine: highlightActiveLine,
+            bracketMatching: true,
+            closeBrackets: autoCloseBrackets,
+            autocompletion: true,
+            tabSize: tabSize || 2,
+            indentOnInput: true,
+            foldGutter: false,
+            dropCursor: true,
+            allowMultipleSelections: true,
+          }}
+          className="h-full w-full"
+        />
       </div>
 
       {/* Pro Status Bar */}

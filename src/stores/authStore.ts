@@ -59,11 +59,24 @@ const DEFAULT_STUDENT: UserProfile = {
   avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
 };
 
+export const isUserPro = (user?: UserProfile | null): boolean => {
+  if (!user) return false;
+  if (user.role === 'mentor' || isMentorEmail(user.email)) return true;
+  return Boolean(user.isPro);
+};
+
 const getStoredUser = (): UserProfile | null => {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem('codebuddy_auth_user');
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.role === 'mentor' || isMentorEmail(parsed.email)) {
+        parsed.isPro = true;
+        parsed.proPlan = 'Mentor Pro Lifetime';
+      }
+      return parsed;
+    }
   } catch (err) {
     console.error('Failed to load stored auth user:', err);
   }
@@ -106,14 +119,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
 
         if (!error && data?.user) {
+          const isMentor = role === 'mentor' || isMentorEmail(normalizedEmail);
           const profile: UserProfile = {
             id: data.user.id,
-            name: data.user.user_metadata?.name || (role === 'mentor' ? 'Rahul Sharma' : normalizedEmail.split('@')[0]),
+            name: data.user.user_metadata?.name || (isMentor ? 'Rahul Sharma' : normalizedEmail.split('@')[0]),
             email: normalizedEmail,
-            role,
+            role: isMentor ? 'mentor' : role,
             isOnline: true,
-            statusText: role === 'mentor' ? 'Senior Peer Mentor' : 'Student Learner',
-            avatarUrl: role === 'mentor' ? DEFAULT_MENTOR.avatarUrl : DEFAULT_STUDENT.avatarUrl,
+            statusText: isMentor ? 'Senior Peer Mentor' : 'Student Learner',
+            isPro: isMentor ? true : false,
+            proPlan: isMentor ? 'Mentor Pro Lifetime' : undefined,
+            avatarUrl: isMentor ? DEFAULT_MENTOR.avatarUrl : DEFAULT_STUDENT.avatarUrl,
           };
 
           localStorage.setItem('codebuddy_auth_user', JSON.stringify(profile));
@@ -123,15 +139,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       // Local / Fallback Sign In
-      const name = role === 'mentor' ? 'Rahul Sharma' : normalizedEmail.split('@')[0];
+      const isMentor = role === 'mentor' || isMentorEmail(normalizedEmail);
+      const name = isMentor ? 'Rahul Sharma' : normalizedEmail.split('@')[0];
       const profile: UserProfile = {
         id: `usr_${Date.now()}`,
         name: name.charAt(0).toUpperCase() + name.slice(1),
         email: normalizedEmail,
-        role,
+        role: isMentor ? 'mentor' : role,
         isOnline: true,
-        statusText: role === 'mentor' ? 'Senior Peer Mentor' : 'Student Learner',
-        avatarUrl: role === 'mentor' ? DEFAULT_MENTOR.avatarUrl : DEFAULT_STUDENT.avatarUrl,
+        statusText: isMentor ? 'Senior Peer Mentor' : 'Student Learner',
+        isPro: isMentor ? true : false,
+        proPlan: isMentor ? 'Mentor Pro Lifetime' : undefined,
+        avatarUrl: isMentor ? DEFAULT_MENTOR.avatarUrl : DEFAULT_STUDENT.avatarUrl,
       };
 
       localStorage.setItem('codebuddy_auth_user', JSON.stringify(profile));
@@ -169,14 +188,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             });
           } catch {}
 
+          const isMentor = role === 'mentor' || isMentorEmail(normalizedEmail);
           const profile: UserProfile = {
             id: data.user.id,
             name,
             email: normalizedEmail,
-            role,
+            role: isMentor ? 'mentor' : role,
             isOnline: true,
-            statusText: role === 'mentor' ? 'Senior Peer Mentor' : 'Student Learner',
-            avatarUrl: role === 'mentor' ? DEFAULT_MENTOR.avatarUrl : DEFAULT_STUDENT.avatarUrl,
+            statusText: isMentor ? 'Senior Peer Mentor' : 'Student Learner',
+            isPro: isMentor ? true : false,
+            proPlan: isMentor ? 'Mentor Pro Lifetime' : undefined,
+            avatarUrl: isMentor ? DEFAULT_MENTOR.avatarUrl : DEFAULT_STUDENT.avatarUrl,
           };
 
           localStorage.setItem('codebuddy_auth_user', JSON.stringify(profile));
@@ -186,14 +208,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       // Local / Fallback Sign Up
+      const isMentor = role === 'mentor' || isMentorEmail(normalizedEmail);
       const profile: UserProfile = {
         id: `usr_${Date.now()}`,
         name,
         email: normalizedEmail,
-        role,
+        role: isMentor ? 'mentor' : role,
         isOnline: true,
-        statusText: role === 'mentor' ? 'Senior Peer Mentor' : 'Student Learner',
-        avatarUrl: role === 'mentor' ? DEFAULT_MENTOR.avatarUrl : DEFAULT_STUDENT.avatarUrl,
+        statusText: isMentor ? 'Senior Peer Mentor' : 'Student Learner',
+        isPro: isMentor ? true : false,
+        proPlan: isMentor ? 'Mentor Pro Lifetime' : undefined,
+        avatarUrl: isMentor ? DEFAULT_MENTOR.avatarUrl : DEFAULT_STUDENT.avatarUrl,
       };
 
       localStorage.setItem('codebuddy_auth_user', JSON.stringify(profile));

@@ -185,32 +185,63 @@ interface CodeState {
   setHistoryIndex: (index: number) => void;
 }
 
+const getSavedCodeState = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('codebuddy_workspace_state');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+};
+
+const saveCodeState = (state: {
+  files: CodeFile[];
+  activeFileId: string;
+  activeLanguage: SupportedLanguage;
+  mentorCode: string;
+}) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('codebuddy_workspace_state', JSON.stringify(state));
+  } catch {}
+};
+
 export const useCodeStore = create<CodeState>((set, get) => {
-  const initialLang: SupportedLanguage = 'html';
-  const initialFiles = WORKSPACE_TEMPLATES[initialLang];
+  const saved = getSavedCodeState();
+  const initialLang: SupportedLanguage = saved?.activeLanguage || 'html';
+  const initialFiles: CodeFile[] = (saved?.files && saved.files.length > 0) ? saved.files : WORKSPACE_TEMPLATES[initialLang];
+  const initialActiveFileId = saved?.activeFileId || initialFiles[0].id;
+  const initialMentorCode = saved?.mentorCode || initialFiles[0].content;
 
   const initialExecuted: Record<string, string> = {};
-  initialFiles.forEach((f) => {
+  initialFiles.forEach((f: CodeFile) => {
     initialExecuted[f.name] = f.content;
   });
 
   return {
     files: initialFiles,
-    activeFileId: initialFiles[0].id,
+    activeFileId: initialActiveFileId,
     activeLanguage: initialLang,
-    mentorCode: initialFiles[0].content,
-    friendCode: initialFiles[0].content,
+    mentorCode: initialMentorCode,
+    friendCode: initialMentorCode,
     executedFiles: initialExecuted,
     autoRun: false,
-    historySnapshots: [initialFiles[0].content],
+    historySnapshots: [initialMentorCode],
     historyIndex: 0,
     isTimelineOpen: false,
 
     setLanguage: (lang: SupportedLanguage) => {
-      const templateFiles = WORKSPACE_TEMPLATES[lang] || WORKSPACE_TEMPLATES.html;
+      const templateFiles: CodeFile[] = WORKSPACE_TEMPLATES[lang] || WORKSPACE_TEMPLATES.html;
       const snapshot: Record<string, string> = {};
-      templateFiles.forEach((f) => {
+      templateFiles.forEach((f: CodeFile) => {
         snapshot[f.name] = f.content;
+      });
+
+      saveCodeState({
+        files: templateFiles,
+        activeFileId: templateFiles[0].id,
+        activeLanguage: lang,
+        mentorCode: templateFiles[0].content,
       });
 
       set({
@@ -226,7 +257,7 @@ export const useCodeStore = create<CodeState>((set, get) => {
     },
 
     setMentorCode: (code: string) => {
-      const { activeFileId, files, autoRun, historySnapshots } = get();
+      const { activeFileId, files, autoRun, historySnapshots, activeLanguage } = get();
       const updatedFiles = files.map((f) =>
         f.id === activeFileId ? { ...f, content: code, isModified: true } : f
       );
@@ -240,6 +271,13 @@ export const useCodeStore = create<CodeState>((set, get) => {
       const nextSnapshots = historySnapshots.length > 50
         ? [...historySnapshots.slice(1), code]
         : [...historySnapshots, code];
+
+      saveCodeState({
+        files: updatedFiles,
+        activeFileId,
+        activeLanguage,
+        mentorCode: code,
+      });
 
       set({
         mentorCode: code,

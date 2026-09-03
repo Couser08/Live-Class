@@ -50,7 +50,13 @@ const getInitialUser = (): UserProfile => {
     const raw = localStorage.getItem('codebuddy_auth_user');
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed?.email) return parsed;
+      if (parsed?.email) {
+        if (isMentorEmail(parsed.email) || parsed.role === 'mentor') {
+          parsed.isPro = true;
+          parsed.proPlan = 'Mentor Pro Lifetime';
+        }
+        return parsed;
+      }
     }
   } catch {}
   return defaultGuestUser;
@@ -68,13 +74,30 @@ const getSavedSessions = (): RoomSession[] => {
   return [];
 };
 
+const getSavedCurrentSession = (): RoomSession | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('codebuddy_current_session');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+};
+
+const initialCurrentSession = getSavedCurrentSession();
+const initialSavedList = getSavedSessions();
+const sessionMentorMatches = initialCurrentSession && (
+  initialCurrentSession.mentor?.id === initialUser.id || 
+  isMentorEmail(initialUser.email) || 
+  initialCurrentSession.mentor?.email === initialUser.email
+);
+
 export const useSessionStore = create<SessionState>((set, get) => ({
-  currentSession: null,
-  activeSessionCardData: null,
-  activeSessionsList: getSavedSessions(),
+  currentSession: initialCurrentSession,
+  activeSessionCardData: initialCurrentSession || (initialSavedList[0] || null),
+  activeSessionsList: initialSavedList,
   currentUser: initialUser,
-  userRoleInSession: initialIsMentor ? 'mentor' : 'student',
-  isFollowingMentor: !initialIsMentor,
+  userRoleInSession: (sessionMentorMatches || initialIsMentor) ? 'mentor' : 'student',
+  isFollowingMentor: !(sessionMentorMatches || initialIsMentor),
   isSandboxMode: false,
   mentorCursorPos: { line: 1, col: 1 },
   metrics: {
@@ -113,6 +136,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     try {
       localStorage.setItem('codebuddy_active_sessions', JSON.stringify(updatedList));
       localStorage.setItem(`cb_session_${code}`, JSON.stringify(newSession));
+      localStorage.setItem('codebuddy_current_session', JSON.stringify(newSession));
     } catch {}
 
     // Immediately insert into Supabase table so incognito & external users can join!
@@ -173,6 +197,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     try {
       localStorage.setItem('codebuddy_active_sessions', JSON.stringify(updatedList));
       localStorage.setItem(`cb_session_${sessionData.code}`, JSON.stringify(joinedSession));
+      localStorage.setItem('codebuddy_current_session', JSON.stringify(joinedSession));
     } catch {}
 
     // Switch workspace code editor files to match joined classroom language!
@@ -194,8 +219,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   selectSession: (session: RoomSession) => {
-    const isMentor = isMentorEmail(get().currentUser.email);
+    const isMentor = isMentorEmail(get().currentUser.email) || session.mentor?.id === get().currentUser.id;
     useCodeStore.getState().setLanguage(session.language);
+    try {
+      localStorage.setItem('codebuddy_current_session', JSON.stringify(session));
+    } catch {}
     set({
       currentSession: session,
       activeSessionCardData: session,
@@ -206,6 +234,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   leaveSession: () => {
+    try {
+      localStorage.removeItem('codebuddy_current_session');
+    } catch {}
     set({
       currentSession: null,
       userRoleInSession: 'student',
@@ -216,6 +247,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   endSession: () => {
     const current = get().currentSession;
+    try {
+      localStorage.removeItem('codebuddy_current_session');
+    } catch {}
     if (current) {
       sessionService.broadcastMessage(current.code, {
         id: `msg_end_${Date.now()}`,
@@ -264,7 +298,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   setCurrentUser: (user: Partial<UserProfile>) => {
     set((state) => {
       const updatedUser = { ...state.currentUser, ...user };
-      const isMentor = isMentorEmail(updatedUser.email);
+      const isMentor = isMentorEmail(updatedUser.email) || updatedUser.role === 'mentor';
+      if (isMentor) {
+        updatedUser.isPro = true;
+        updatedUser.proPlan = 'Mentor Pro Lifetime';
+      }
       return {
         currentUser: updatedUser,
         userRoleInSession: isMentor ? 'mentor' : 'student',

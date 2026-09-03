@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore, isMentorEmail } from '../stores/authStore';
 import { useUIStore } from '../stores/uiStore';
 import { Sparkles, Check, Gift, ChevronDown, ChevronUp } from 'lucide-react';
 
 export const SubscriptionPage: React.FC = () => {
   const { user } = useAuthStore();
   const { openClaimRewardModal, openTourModal } = useUIStore();
-  const isPro = user?.isPro || false;
+  const isMentor = isMentorEmail(user?.email) || user?.role === 'mentor';
+  const isPro = isMentor || Boolean(user?.isPro);
 
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
 

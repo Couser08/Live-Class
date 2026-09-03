@@ -13,8 +13,8 @@ export const UserProfileModal: React.FC = () => {
   const { setActiveNavTab, addToast, openClaimRewardModal } = useUIStore();
 
   const activeUser = user || currentUser;
-  const isMentor = isMentorEmail(activeUser?.email);
-  const isPro = activeUser?.isPro || false;
+  const isMentor = isMentorEmail(activeUser?.email) || activeUser?.role === 'mentor';
+  const isPro = isMentor || Boolean(activeUser?.isPro);
 
   if (!activeUser) return null;
 

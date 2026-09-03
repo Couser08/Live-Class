@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Avatar } from '../common/Avatar';
 import { useSessionStore } from '../../stores/sessionStore';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore, isMentorEmail } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { cn } from '../../lib/utils';
 
@@ -28,6 +28,8 @@ export const Sidebar: React.FC = () => {
   const currentUser = useSessionStore((state) => state.currentUser);
   const { user: authUser, openAuthModal, openProfileModal } = useAuthStore();
   const activeUser = authUser || currentUser;
+  const isMentor = isMentorEmail(activeUser?.email) || activeUser?.role === 'mentor';
+  const isUserPro = isMentor || Boolean(activeUser?.isPro);
   const {
     activeNavTab,
     setActiveNavTab,
@@ -179,7 +181,7 @@ export const Sidebar: React.FC = () => {
                       <span>Student</span>
                     </span>
                   )}
-                  {activeUser.isPro && (
+                  {isUserPro && (
                     <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-md text-[9px] font-black bg-gradient-to-r from-amber-500 to-indigo-600 text-white shadow-2xs">
                       <Sparkles className="w-2 h-2" />
                       <span>PRO</span>
@@ -199,7 +201,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Upgrade Card / Pro Member Status */}
         {!isSidebarCollapsed ? (
-          activeUser.isPro ? (
+          isUserPro ? (
             <div className="rounded-2xl p-3 bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-900 border border-indigo-500/40 text-white shadow-lg space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
@@ -209,11 +211,11 @@ export const Sidebar: React.FC = () => {
                   <span className="text-[11px] font-black tracking-tight">CodeBuddy PRO</span>
                 </div>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  Active
+                  {isMentor ? 'Mentor Lifetime' : 'Active'}
                 </span>
               </div>
               <p className="text-[10px] text-indigo-200/90 leading-tight">
-                12-Month Free Trial active with all Pro tools unlocked.
+                {isMentor ? 'Teaching privileges & all Pro tools unlocked.' : '12-Month Free Trial active with all Pro tools unlocked.'}
               </p>
               <button
                 onClick={() => setActiveNavTab('subscription')}
@@ -247,10 +249,10 @@ export const Sidebar: React.FC = () => {
         ) : (
           <button
             onClick={handleProUpgrade}
-            title={activeUser.isPro ? "CodeBuddy Pro Active" : "Claim 12-Month Pro Free Trial"}
+            title={isUserPro ? "CodeBuddy Pro Active" : "Claim 12-Month Pro Free Trial"}
             className={cn(
               "w-full p-2.5 rounded-xl flex items-center justify-center transition-colors cursor-pointer",
-              activeUser.isPro ? "bg-amber-500 text-white hover:bg-amber-600" : "bg-indigo-600 text-white hover:bg-indigo-700"
+              isUserPro ? "bg-amber-500 text-white hover:bg-amber-600" : "bg-indigo-600 text-white hover:bg-indigo-700"
             )}
           >
             <Diamond className="w-4 h-4" />

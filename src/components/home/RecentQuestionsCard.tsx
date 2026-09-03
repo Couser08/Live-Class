@@ -35,30 +35,28 @@ export const RecentQuestionsCard: React.FC = () => {
 
   return (
     <>
-      <Card className="p-5 flex flex-col justify-between space-y-3">
+      <Card className="p-6 flex flex-col justify-between space-y-4 bg-white dark:bg-[#111622] border-slate-100 dark:border-slate-800/80 rounded-3xl shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)]">
         {/* Header */}
-        <div className="flex items-center justify-between pb-1">
-          <h3 className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
             Recent Questions
           </h3>
-          {questions.length > 0 && (
-            <button
-              onClick={() => handleOpenQuestion(questions[0])}
-              className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 cursor-pointer"
-            >
-              View all
-            </button>
-          )}
+          <button
+            onClick={() => questions.length > 0 && handleOpenQuestion(questions[0])}
+            className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+          >
+            View all
+          </button>
         </div>
 
         {/* Questions list or empty state */}
         {questions.length === 0 ? (
-          <div className="py-6 text-center space-y-1.5">
-            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
-              <HelpCircle className="w-4 h-4" />
+          <div className="py-6 text-center space-y-2">
+            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
+              <HelpCircle className="w-5 h-5" />
             </div>
-            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No questions yet</p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">No questions yet</h4>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed max-w-[220px] mx-auto">
               Live questions asked by learners will appear here.
             </p>
           </div>
@@ -68,7 +66,7 @@ export const RecentQuestionsCard: React.FC = () => {
               <div
                 key={item.id}
                 onClick={() => handleOpenQuestion(item)}
-                className="pt-2.5 first:pt-0 flex items-start gap-3 cursor-pointer group hover:bg-slate-50/70 dark:hover:bg-slate-800/60 p-1.5 rounded-xl transition-colors"
+                className="pt-2.5 first:pt-0 flex items-start gap-3 cursor-pointer group hover:bg-slate-50/70 dark:hover:bg-slate-800/60 p-2 rounded-xl transition-colors"
               >
                 <Avatar
                   src={item.author.avatarUrl}
@@ -78,20 +76,27 @@ export const RecentQuestionsCard: React.FC = () => {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
                       {item.author.name}
                     </span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                        {item.createdAt}
-                      </span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#5551FF]" />
-                    </div>
+                    <span className="text-[10px] text-slate-400 shrink-0">
+                      {item.createdAt}
+                    </span>
                   </div>
 
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-1 mt-0.5 font-medium leading-snug">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate mt-0.5">
                     {item.question}
                   </p>
+
+                  {item.answered ? (
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-semibold flex items-center gap-1">
+                      <span>✓ Answered</span>
+                    </p>
+                  ) : (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 inline-block font-semibold">
+                      Pending answer
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -99,64 +104,60 @@ export const RecentQuestionsCard: React.FC = () => {
         )}
       </Card>
 
-      {/* Answer / View Question Modal */}
-      <Modal
-        isOpen={Boolean(selectedQuestion)}
-        onClose={() => setSelectedQuestion(null)}
-        title={`Live Question from ${selectedQuestion?.author.name || 'Student'}`}
-        description="Respond in real-time to your learner"
-      >
-        {selectedQuestion && (
-          <form onSubmit={handleSendReply} className="space-y-4 pt-2">
-            <div className="bg-slate-50 dark:bg-slate-800/80 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-start gap-3">
-              <Avatar
-                src={selectedQuestion.author.avatarUrl}
-                name={selectedQuestion.author.name}
-                size="sm"
-              />
+      {/* Answer Modal */}
+      {selectedQuestion && (
+        <Modal
+          isOpen={true}
+          onClose={() => setSelectedQuestion(null)}
+          title="Answer Live Question"
+          description={`Asked by ${selectedQuestion.author.name} at ${selectedQuestion.createdAt}`}
+        >
+          <div className="space-y-4 py-2">
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700">
+              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                "{selectedQuestion.question}"
+              </p>
+            </div>
+
+            <form onSubmit={handleSendReply} className="space-y-3">
               <div>
-                <span className="text-xs font-bold text-slate-900 dark:text-white">
-                  {selectedQuestion.author.name}
-                </span>
-                <p className="text-xs text-slate-700 dark:text-slate-200 font-medium mt-1">
-                  {selectedQuestion.question}
-                </p>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Your Answer
+                </label>
+                <textarea
+                  rows={3}
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Type your explanation or tip for the student..."
+                  className="w-full text-xs rounded-xl p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#4F46E5]"
+                />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Your Answer (Mentor)
-              </label>
-              <textarea
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Explain the concept clearly..."
-                rows={3}
-                className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedQuestion(null)}
-              >
-                Close
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                icon={<Send className="w-3.5 h-3.5" />}
-              >
-                Send Answer
-              </Button>
-            </div>
-          </form>
-        )}
-      </Modal>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedQuestion(null)}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={!replyText.trim()}
+                  icon={<Send className="w-3.5 h-3.5" />}
+                  className="text-xs bg-[#4F46E5] hover:bg-[#4338CA] text-white"
+                >
+                  Submit Answer
+                </Button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+      )}
     </>
   );
 };

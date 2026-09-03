@@ -50,6 +50,7 @@ export const SessionWorkspace: React.FC = () => {
 
         // Ignore messages sent by active user themselves
         const isSelf =
+          (newMsg.senderId && newMsg.senderId === activeUser.id) ||
           newMsg.senderName?.includes(activeUser.name) ||
           (isMentor && newMsg.senderRole === 'mentor') ||
           (!isMentor && newMsg.senderRole === 'student' && newMsg.senderName?.includes(activeUser.name));

@@ -190,7 +190,9 @@ export async function saveCodeSubmission(
   sourceCode: string,
   stdin: string,
   execResult: PistonExecutionResult,
-  userId?: string
+  userId?: string,
+  companionFiles?: Record<string, string>,
+  roomCode?: string
 ): Promise<void> {
   if (!isSupabaseConfigured) return;
 
@@ -213,11 +215,16 @@ export async function saveCodeSubmission(
 
     await supabase.from('code_submissions').insert({
       user_id: resolvedUserId,
+      room_code: roomCode || null,
       language: 'c',
       source_code: sourceCode,
+      companion_files: companionFiles || {},
       stdin_input: stdin || null,
       stdout_output: execResult.stdout || null,
       stderr_output: !execResult.success ? execResult.stderr : null,
+      exit_code: execResult.exitCode || 0,
+      engine: execResult.engine,
+      compiler_version: '10.2.0',
       status,
       execution_time_ms: execResult.executionTimeMs,
     });

@@ -72,6 +72,9 @@ export const SessionHeader: React.FC = () => {
           });
         }
       },
+      onPresenceSync: (students) => {
+        setConnectedStudents(students);
+      },
     });
 
     return unsubscribe;

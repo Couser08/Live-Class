@@ -168,28 +168,38 @@ export const InteractiveCodeEditor: React.FC = () => {
     }
   }, [currentSession?.language]);
 
-  // Real-time synchronization: Students follow mentor broadcast with 500ms smooth delay
+  // Real-time synchronization: Students follow mentor broadcast with zero-lag smooth streaming
   useEffect(() => {
     if (!currentSession?.code) return;
 
-    let syncTimeout: number | null = null;
+    let rafId: number | null = null;
+    let pendingPayload: any = null;
+
+    const applyPayload = () => {
+      if (pendingPayload) {
+        setMentorCode(pendingPayload.code);
+        if (pendingPayload.cursorPos) {
+          setMentorCursor(pendingPayload.cursorPos);
+        }
+        pendingPayload = null;
+      }
+      rafId = null;
+    };
+
     const unsubscribe = sessionService.subscribeToRoom(currentSession.code, {
       onCodeStream: (payload) => {
-        if (!isMentor && !isSandboxMode) {
-          if (syncTimeout) window.clearTimeout(syncTimeout);
-          syncTimeout = window.setTimeout(() => {
-            setMentorCode(payload.code);
-            if (payload.cursorPos) {
-              setMentorCursor(payload.cursorPos);
-            }
-          }, 500); // Reduced to 500ms
+        if (!isMentor && !isSandboxMode && payload?.code !== undefined) {
+          pendingPayload = payload;
+          if (!rafId) {
+            rafId = window.requestAnimationFrame(applyPayload);
+          }
         }
       },
       onChatMessage: () => {},
     });
 
     return () => {
-      if (syncTimeout) window.clearTimeout(syncTimeout);
+      if (rafId) window.cancelAnimationFrame(rafId);
       unsubscribe?.();
     };
   }, [currentSession?.code, isMentor, isSandboxMode, setMentorCode, setMentorCursor]);
@@ -275,6 +285,12 @@ export const InteractiveCodeEditor: React.FC = () => {
 
       {/* Single-Layer Professional CodeMirror Canvas */}
       <div className="flex-1 flex overflow-hidden relative">
+        {!isMentor && !isSandboxMode && mentorCursorPos && (
+          <div className="absolute top-2 right-4 z-20 pointer-events-none flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-600/90 text-white text-[11px] font-semibold backdrop-blur-sm shadow-md border border-indigo-400/30 animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>Mentor live cursor: Ln {mentorCursorPos.line}, Col {mentorCursorPos.col}</span>
+          </div>
+        )}
         <CodeMirror
           ref={editorRef}
           value={mentorCode}

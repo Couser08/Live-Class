@@ -17,6 +17,7 @@ export interface SessionData {
 export interface ChatMessageItem {
   id: string;
   sessionId: string;
+  senderId?: string;
   senderName: string;
   senderRole: 'mentor' | 'student';
   senderAvatar?: string;
@@ -35,6 +36,15 @@ export interface RealtimeCodePayload {
   timestamp?: number;
 }
 
+export interface RoomCallbacks {
+  onCodeUpdate?: (payload: RealtimeCodePayload) => void;
+  onCodeStream?: (payload: RealtimeCodePayload) => void;
+  onChatMessage?: (payload: ChatMessageItem) => void;
+  onNotesStream?: (content: string) => void;
+  onStudentReached?: (student: UserProfile) => void;
+  onPresenceSync?: (students: UserProfile[]) => void;
+}
+
 // In-browser BroadcastChannel singleton cache for zero-latency cross-tab communication
 const channelCache = new Map<string, BroadcastChannel>();
 
@@ -51,6 +61,15 @@ const getBroadcastChannel = (roomCode: string): BroadcastChannel | null => {
   return channelCache.get(clean) || null;
 };
 
+interface ManagedRoomChannel {
+  cleanCode: string;
+  sbChannel: any;
+  listeners: Set<RoomCallbacks>;
+  lastCodeTimestamp: number;
+}
+
+const managedRooms = new Map<string, ManagedRoomChannel>();
+
 export const sessionService = {
   /**
    * Create and register session in Supabase and broadcast
@@ -65,47 +84,31 @@ export const sessionService = {
     description?: string;
   }): Promise<void> {
     const cleanCode = session.code.trim().toUpperCase();
-
     if (isSupabaseConfigured) {
       try {
-        await supabase.from('sessions').upsert(
-          {
-            code: cleanCode,
-            pin: session.pin,
-            title: session.title,
-            language: session.language,
-            is_live: true,
-            description: session.description || `${session.language.toUpperCase()} Live Classroom`,
-          },
-          { onConflict: 'code' }
-        );
+        await supabase.from('sessions').upsert({
+          code: cleanCode,
+          pin: session.pin,
+          title: session.title,
+          language: session.language,
+          is_live: true,
+          description: session.description || `${session.language.toUpperCase()} Live Classroom`,
+        }, { onConflict: 'code' });
       } catch (err) {
         console.warn('Supabase session insert error:', err);
       }
     }
-
-    try {
-      const channel = getBroadcastChannel('GLOBAL_SESSIONS');
-      if (channel) {
-        channel.postMessage({ type: 'SESSION_CREATED', payload: session });
-      }
-    } catch {}
+    const channel = getBroadcastChannel('GLOBAL_SESSIONS');
+    if (channel) {
+      try { channel.postMessage({ type: 'SESSION_CREATED', payload: session }); } catch {}
+    }
   },
 
-  /**
-   * Fetch session details by code
-   */
   async getSessionByCode(code: string): Promise<SessionData | null> {
     const cleanCode = code.trim().toUpperCase();
-
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('code', cleanCode)
-          .single();
-
+        const { data, error } = await supabase.from('sessions').select('*').eq('code', cleanCode).single();
         if (!error && data) {
           return {
             id: data.id,
@@ -123,11 +126,9 @@ export const sessionService = {
       }
     }
 
-    // Check localStorage for recently created sessions
     try {
       const local = localStorage.getItem(`cb_session_${cleanCode}`);
       if (local) return JSON.parse(local);
-
       const allActive = localStorage.getItem('codebuddy_active_sessions');
       if (allActive) {
         const list: any[] = JSON.parse(allActive);
@@ -147,51 +148,24 @@ export const sessionService = {
         }
       }
     } catch {}
-
     return null;
   },
 
-  /**
-   * Validate credentials and join session
-   */
   async joinSession(
     code: string,
     pin: string,
     user: UserProfile
   ): Promise<{ success: boolean; session?: SessionData; role: 'mentor' | 'student'; error?: string }> {
     const session = await this.getSessionByCode(code);
-
-    if (!session) {
-      return {
-        success: false,
-        role: 'student',
-        error: `Room code "${code.toUpperCase()}" was not found.`,
-      };
-    }
-
-    if (!session.isLive) {
-      return {
-        success: false,
-        role: 'student',
-        error: 'This live session has already ended.',
-      };
-    }
-
-    // Validate PIN if present
+    if (!session) return { success: false, role: 'student', error: `Room code "${code.toUpperCase()}" was not found.` };
+    if (!session.isLive) return { success: false, role: 'student', error: 'This live session has already ended.' };
     if (session.pin && pin.trim() !== session.pin.trim()) {
-      return {
-        success: false,
-        role: 'student',
-        error: 'Incorrect 4-digit PIN for this classroom.',
-      };
+      return { success: false, role: 'student', error: 'Incorrect 4-digit PIN for this classroom.' };
     }
 
-    // Determine Role:
-    // If user's email is tungariyarahul08@gmail.com OR user is the mentor who created the session
     const isMentor = isMentorEmail(user.email) || (session.mentorId && session.mentorId === user.id);
     const role: 'mentor' | 'student' = isMentor ? 'mentor' : 'student';
 
-    // Register participant in Supabase if online
     if (isSupabaseConfigured && user.id) {
       try {
         await supabase.from('session_participants').upsert({
@@ -199,95 +173,127 @@ export const sessionService = {
           user_id: user.id,
           role: role === 'mentor' ? 'mentor' : 'student',
           is_active: true,
-        });
+          last_seen_at: new Date().toISOString(),
+        }, { onConflict: 'session_id,user_id' });
       } catch {}
     }
 
-    if (role === 'student') {
-      this.broadcastStudentReached(code, user);
-    }
-
-    return {
-      success: true,
-      session,
-      role,
-    };
+    if (role === 'student') this.broadcastStudentReached(code, user);
+    return { success: true, session, role };
   },
 
   /**
-   * Broadcast code change to connected students
+   * Get or initialize the unified active room channel instance
    */
+  getOrCreateManagedRoom(cleanCode: string): ManagedRoomChannel {
+    let entry = managedRooms.get(cleanCode);
+    if (!entry) {
+      entry = { cleanCode, sbChannel: null, listeners: new Set(), lastCodeTimestamp: 0 };
+      const broadcastChan = getBroadcastChannel(cleanCode);
+
+      const handlePayload = (type: string, data: any) => {
+        if (!entry) return;
+        if (type === 'code' && data?.code) {
+          if (data.timestamp && data.timestamp < entry.lastCodeTimestamp) return;
+          if (data.timestamp) entry.lastCodeTimestamp = data.timestamp;
+          entry.listeners.forEach((cb) => { cb.onCodeStream?.(data); cb.onCodeUpdate?.(data); });
+        } else if (type === 'chat' && data) {
+          entry.listeners.forEach((cb) => cb.onChatMessage?.(data));
+        } else if (type === 'notes' && data?.content !== undefined) {
+          entry.listeners.forEach((cb) => cb.onNotesStream?.(data.content));
+        } else if (type === 'reached' && data?.user) {
+          entry.listeners.forEach((cb) => cb.onStudentReached?.(data.user));
+        }
+      };
+
+      if (broadcastChan) {
+        broadcastChan.addEventListener('message', (e) => {
+          if (!e.data) return;
+          if (e.data.type === 'CODE_STREAM') handlePayload('code', e.data.payload);
+          else if (e.data.type === 'CHAT_MESSAGE') handlePayload('chat', e.data.payload);
+          else if (e.data.type === 'NOTES_STREAM') handlePayload('notes', e.data.payload);
+          else if (e.data.type === 'STUDENT_REACHED') handlePayload('reached', e.data.payload);
+        });
+      }
+
+      if (typeof window !== 'undefined') {
+        window.addEventListener('storage', (e) => {
+          if (!e.newValue) return;
+          try {
+            const parsed = JSON.parse(e.newValue);
+            if (e.key === `cb_sync_${cleanCode}`) handlePayload('code', parsed?.payload);
+            else if (e.key === `cb_chat_${cleanCode}`) handlePayload('chat', parsed?.message);
+            else if (e.key === `cb_reached_${cleanCode}`) handlePayload('reached', parsed);
+          } catch {}
+        });
+      }
+
+      if (isSupabaseConfigured) {
+        try {
+          const sb = supabase.channel(`room:${cleanCode}`, { config: { broadcast: { self: false } } });
+          sb.on('broadcast', { event: 'code_stream' }, ({ payload }) => handlePayload('code', payload))
+            .on('broadcast', { event: 'chat_message' }, ({ payload }) => handlePayload('chat', payload))
+            .on('broadcast', { event: 'notes_stream' }, ({ payload }) => handlePayload('notes', payload))
+            .on('broadcast', { event: 'student_reached' }, ({ payload }) => handlePayload('reached', payload))
+            .on('presence', { event: 'sync' }, () => {
+              const state = sb.presenceState();
+              const students: UserProfile[] = [];
+              Object.values(state).forEach((presences: any) => {
+                presences.forEach((p: any) => { if (p.user) students.push(p.user); });
+              });
+              entry!.listeners.forEach((cb) => {
+                cb.onPresenceSync?.(students);
+                if (students.length > 0) cb.onStudentReached?.(students[0]);
+              });
+            })
+            .subscribe();
+          entry.sbChannel = sb;
+        } catch {}
+      }
+      managedRooms.set(cleanCode, entry);
+    }
+    return entry;
+  },
+
   broadcastCode(roomCode: string, payload: RealtimeCodePayload) {
     const clean = roomCode.trim().toUpperCase();
+    const entry = this.getOrCreateManagedRoom(clean);
     const channel = getBroadcastChannel(clean);
-    if (channel) {
-      try {
-        channel.postMessage({ type: 'CODE_STREAM', payload });
-      } catch {}
-    }
-
-    // LocalStorage fallback for zero-loss cross-tab sync
-    try {
-      localStorage.setItem(`cb_sync_${clean}`, JSON.stringify({
-        payload,
-        t: payload.timestamp || Date.now(),
-      }));
-    } catch {}
-
-    if (isSupabaseConfigured) {
-      try {
-        const sbChannel = supabase.channel(`room:${clean}`);
-        sbChannel.send({
-          type: 'broadcast',
-          event: 'code_stream',
-          payload,
-        });
-      } catch {}
+    if (channel) try { channel.postMessage({ type: 'CODE_STREAM', payload }); } catch {}
+    try { localStorage.setItem(`cb_sync_${clean}`, JSON.stringify({ payload, t: payload.timestamp || Date.now() })); } catch {}
+    if (entry.sbChannel) {
+      try { entry.sbChannel.send({ type: 'broadcast', event: 'code_stream', payload }); } catch {}
     }
   },
 
-  /**
-   * Broadcast a chat message or Q&A question
-   */
   broadcastMessage(roomCode: string, message: ChatMessageItem) {
     const clean = roomCode.trim().toUpperCase();
+    const entry = this.getOrCreateManagedRoom(clean);
     const channel = getBroadcastChannel(clean);
-    if (channel) {
-      try {
-        channel.postMessage({ type: 'CHAT_MESSAGE', payload: message });
-      } catch {}
-    }
-
-    try {
-      localStorage.setItem(`cb_chat_${clean}`, JSON.stringify({
-        message,
-        t: Date.now(),
-      }));
-    } catch {}
-
-    if (isSupabaseConfigured) {
-      try {
-        const sbChannel = supabase.channel(`room:${clean}`);
-        sbChannel.send({
-          type: 'broadcast',
-          event: 'chat_message',
-          payload: message,
-        });
-      } catch {}
+    if (channel) try { channel.postMessage({ type: 'CHAT_MESSAGE', payload: message }); } catch {}
+    try { localStorage.setItem(`cb_chat_${clean}`, JSON.stringify({ message, t: Date.now() })); } catch {}
+    if (entry.sbChannel) {
+      try { entry.sbChannel.send({ type: 'broadcast', event: 'chat_message', payload: message }); } catch {}
     }
   },
 
-  /**
-   * Broadcast that a student has reached and joined the live classroom
-   */
+  broadcastNotes(roomCode: string, content: string) {
+    const clean = roomCode.trim().toUpperCase();
+    const entry = this.getOrCreateManagedRoom(clean);
+    const channel = getBroadcastChannel(clean);
+    if (channel) try { channel.postMessage({ type: 'NOTES_STREAM', payload: { content } }); } catch {}
+    try { localStorage.setItem(`cb_notes_${clean}`, content); } catch {}
+    if (entry.sbChannel) {
+      try { entry.sbChannel.send({ type: 'broadcast', event: 'notes_stream', payload: { content, timestamp: Date.now() } }); } catch {}
+    }
+  },
+
   broadcastStudentReached(roomCode: string, student: UserProfile) {
     const clean = roomCode.trim().toUpperCase();
-    const channel = getBroadcastChannel(clean);
+    const entry = this.getOrCreateManagedRoom(clean);
     const payload = { user: student, timestamp: Date.now() };
-
-    if (channel) {
-      try { channel.postMessage({ type: 'STUDENT_REACHED', payload }); } catch {}
-    }
+    const channel = getBroadcastChannel(clean);
+    if (channel) try { channel.postMessage({ type: 'STUDENT_REACHED', payload }); } catch {}
 
     try {
       localStorage.setItem(`cb_reached_${clean}`, JSON.stringify(payload));
@@ -299,9 +305,10 @@ export const sessionService = {
       }
     } catch {}
 
-    if (isSupabaseConfigured) {
+    if (entry.sbChannel) {
       try {
-        supabase.channel(`room:${clean}`).send({ type: 'broadcast', event: 'student_reached', payload });
+        entry.sbChannel.send({ type: 'broadcast', event: 'student_reached', payload });
+        entry.sbChannel.track({ role: student.role || 'student', user: student, online_at: Date.now() });
       } catch {}
     }
   },
@@ -317,103 +324,20 @@ export const sessionService = {
   },
 
   /**
-   * Subscribe to real-time events for a room
+   * Subscribe to real-time events for a room with connection pooling
    */
-  subscribeToRoom(
-    roomCode: string,
-    callbacks: {
-      onCodeUpdate?: (payload: RealtimeCodePayload) => void;
-      onCodeStream?: (payload: RealtimeCodePayload) => void;
-      onChatMessage?: (payload: ChatMessageItem) => void;
-      onStudentReached?: (student: UserProfile) => void;
-    }
-  ) {
+  subscribeToRoom(roomCode: string, callbacks: RoomCallbacks) {
     const cleanCode = roomCode.trim().toUpperCase();
-    const channel = getBroadcastChannel(cleanCode);
-
-    let lastCodeTimestamp = 0;
-    const handleCodePayload = (payload: RealtimeCodePayload) => {
-      if (payload.timestamp && payload.timestamp < lastCodeTimestamp) return;
-      if (payload.timestamp) lastCodeTimestamp = payload.timestamp;
-      callbacks.onCodeStream?.(payload);
-      callbacks.onCodeUpdate?.(payload);
-    };
-
-    const handleMsg = (event: MessageEvent) => {
-      const data = event.data;
-      if (!data) return;
-      if (data.type === 'CODE_STREAM' && data.payload) {
-        handleCodePayload(data.payload);
-      } else if (data.type === 'CHAT_MESSAGE' && data.payload) {
-        callbacks.onChatMessage?.(data.payload);
-      } else if (data.type === 'STUDENT_REACHED' && data.payload?.user) {
-        callbacks.onStudentReached?.(data.payload.user);
-      }
-    };
-
-    if (channel) {
-      channel.addEventListener('message', handleMsg);
-    }
-
-    // Storage event listener ensures changes always reflect even across disparate browser windows
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === `cb_sync_${cleanCode}` && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          if (parsed?.payload) {
-            handleCodePayload(parsed.payload);
-          }
-        } catch {}
-      } else if (e.key === `cb_chat_${cleanCode}` && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          if (parsed?.message) {
-            callbacks.onChatMessage?.(parsed.message);
-          }
-        } catch {}
-      } else if (e.key === `cb_reached_${cleanCode}` && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          if (parsed?.user) {
-            callbacks.onStudentReached?.(parsed.user);
-          }
-        } catch {}
-      }
-    };
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('storage', handleStorage);
-    }
-
-    let sbSubscription: any = null;
-    if (isSupabaseConfigured) {
-      try {
-        sbSubscription = supabase
-          .channel(`room:${cleanCode}`)
-          .on('broadcast', { event: 'code_stream' }, ({ payload }) => {
-            handleCodePayload(payload);
-          })
-          .on('broadcast', { event: 'chat_message' }, ({ payload }) => {
-            callbacks.onChatMessage?.(payload);
-          })
-          .on('broadcast', { event: 'student_reached' }, ({ payload }) => {
-            if (payload?.user) {
-              callbacks.onStudentReached?.(payload.user);
-            }
-          })
-          .subscribe();
-      } catch {}
-    }
+    const entry = this.getOrCreateManagedRoom(cleanCode);
+    entry.listeners.add(callbacks);
 
     return () => {
-      if (channel) {
-        channel.removeEventListener('message', handleMsg);
-      }
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('storage', handleStorage);
-      }
-      if (sbSubscription && isSupabaseConfigured) {
-        supabase.removeChannel(sbSubscription);
+      entry.listeners.delete(callbacks);
+      if (entry.listeners.size === 0) {
+        if (entry.sbChannel) {
+          try { supabase.removeChannel(entry.sbChannel); } catch {}
+        }
+        managedRooms.delete(cleanCode);
       }
     };
   },
@@ -424,16 +348,12 @@ export const sessionService = {
   async getMessages(sessionId: string): Promise<ChatMessageItem[]> {
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
-          .from('session_messages')
-          .select('*')
-          .eq('session_id', sessionId)
-          .order('created_at', { ascending: true });
-
+        const { data, error } = await supabase.from('session_messages').select('*').eq('session_id', sessionId).order('created_at', { ascending: true });
         if (!error && data) {
           return data.map((d) => ({
             id: d.id,
             sessionId: d.session_id,
+            senderId: d.sender_id,
             senderName: d.sender_name,
             senderRole: d.sender_role,
             senderAvatar: d.sender_avatar,
@@ -444,19 +364,13 @@ export const sessionService = {
         }
       } catch {}
     }
-
-    // Check localStorage messages for this session
     try {
       const saved = localStorage.getItem(`cb_msgs_${sessionId}`);
       if (saved) return JSON.parse(saved);
     } catch {}
-
     return [];
   },
 
-  /**
-   * Send a chat message or question
-   */
   async sendMessage(msg: Omit<ChatMessageItem, 'id' | 'createdAt'>): Promise<ChatMessageItem> {
     const newMsg: ChatMessageItem = {
       ...msg,
@@ -468,6 +382,7 @@ export const sessionService = {
       try {
         await supabase.from('session_messages').insert({
           session_id: msg.sessionId,
+          sender_id: msg.senderId || null,
           sender_name: msg.senderName,
           sender_role: msg.senderRole,
           sender_avatar: msg.senderAvatar,
@@ -478,8 +393,7 @@ export const sessionService = {
 
     try {
       const key = `cb_msgs_${msg.sessionId}`;
-      const existing = localStorage.getItem(key);
-      const list = existing ? JSON.parse(existing) : [];
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
       list.push(newMsg);
       localStorage.setItem(key, JSON.stringify(list));
     } catch {}

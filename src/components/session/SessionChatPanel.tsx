@@ -65,18 +65,14 @@ export const SessionChatPanel: React.FC = () => {
     if (currentSession?.code) {
       const unsubscribe = sessionService.subscribeToRoom(currentSession.code, {
         onChatMessage: (newMsg) => {
-          // Check for notes sync broadcast
-          if (newMsg.content?.startsWith('__NOTES_SYNC__:')) {
-            const rawNotes = newMsg.content.replace('__NOTES_SYNC__:', '');
-            setNotesContent(rawNotes);
-            return;
-          }
-
           // Deduplicate messages so user never sees duplicate bubbles!
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
+        },
+        onNotesStream: (notes) => {
+          setNotesContent(notes);
         },
       });
       return unsubscribe;
@@ -102,6 +98,7 @@ export const SessionChatPanel: React.FC = () => {
     const newMsg: ChatMessageItem = {
       id: msgId,
       sessionId,
+      senderId: activeUser.id,
       senderName: `${activeUser.name}${isMentor ? ' (Mentor)' : ' (Student)'}`,
       senderRole: isMentor ? 'mentor' : 'student',
       senderAvatar: activeUser.avatarUrl,
@@ -142,16 +139,7 @@ export const SessionChatPanel: React.FC = () => {
     setNotesContent(text);
     if (currentSession?.code) {
       localStorage.setItem(`cb_notes_${currentSession.code}`, text);
-
-      // Broadcast notes update in real-time to student screens!
-      sessionService.broadcastMessage(currentSession.code, {
-        id: `notes_${Date.now()}`,
-        sessionId,
-        senderName: 'System',
-        senderRole: 'mentor',
-        content: `__NOTES_SYNC__:${text}`,
-        createdAt: 'Now',
-      });
+      sessionService.broadcastNotes(currentSession.code, text);
     }
   };
 

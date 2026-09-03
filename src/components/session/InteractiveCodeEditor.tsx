@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { highlightCode } from '../../lib/shiki';
 import { useCodeStore } from '../../stores/codeStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -30,15 +30,34 @@ export const InteractiveCodeEditor: React.FC = () => {
   const preRef = useRef<HTMLPreElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<number | null>(null);
+  const broadcastTimeoutRef = useRef<number | null>(null);
 
-  // Sync Shiki syntax highlighting
+  // 1. Precise cursor position ref (selectionStart & selectionEnd)
+  const cursorSelectionRef = useRef<{ start: number; end: number } | null>(null);
+
+  // 2. Restore cursor synchronously before browser paint on any state update
+  useLayoutEffect(() => {
+    if (cursorSelectionRef.current && textareaRef.current && document.activeElement === textareaRef.current) {
+      const { start, end } = cursorSelectionRef.current;
+      const maxLen = textareaRef.current.value.length;
+      const safeStart = Math.min(start, maxLen);
+      const safeEnd = Math.min(end, maxLen);
+      textareaRef.current.setSelectionRange(safeStart, safeEnd);
+    }
+  }, [mentorCode]);
+
+  // 3. Debounced syntax highlighting (150ms) to prevent re-render thrashing on every keystroke
   useEffect(() => {
     let isMounted = true;
-    highlightCode(mentorCode, fileLang, editorTheme).then((html) => {
-      if (isMounted) setHighlightedHtml(html);
-    });
+    const timer = setTimeout(() => {
+      highlightCode(mentorCode, fileLang, editorTheme).then((html) => {
+        if (isMounted) setHighlightedHtml(html);
+      });
+    }, 150);
+
     return () => {
       isMounted = false;
+      clearTimeout(timer);
     };
   }, [mentorCode, fileLang, editorTheme]);
 
@@ -99,121 +118,139 @@ export const InteractiveCodeEditor: React.FC = () => {
     }
   };
 
-  // Keyboard shortcut listener
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (isReadOnly) return; // Prevent student from editing during live follow mode
+    // Micro-throttled real-time broadcast to connected students
+    const broadcastLatestCode = (code: string, pos: { line: number; col: number }) => {
+      if (!isMentor || !currentSession?.code) return;
+      if (broadcastTimeoutRef.current) window.clearTimeout(broadcastTimeoutRef.current);
+      broadcastTimeoutRef.current = window.setTimeout(() => {
+        sessionService.broadcastCode(currentSession.code, {
+          code,
+          language: fileLang,
+          cursorPos: pos,
+          timestamp: Date.now(),
+        });
+      }, 40);
+    };
 
-      const textarea = textareaRef.current;
-      if (!textarea) return;
+    // Keyboard shortcut listener
+    const handleKeyDown = useCallback(
+      (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (isReadOnly) return;
 
-      // ⌘K / Ctrl+K: Command Palette
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setIsCommandPaletteOpen((prev) => !prev);
-        return;
-      }
+        const textarea = textareaRef.current;
+        if (!textarea) return;
 
-      // ⌘↵ / Ctrl+Enter: Run Code
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        runCode();
-        return;
-      }
-
-      // ⌥⇧F / Alt+Shift+F: Format Code
-      if ((e.altKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
-        e.preventDefault();
-        formatCurrentCode();
-        return;
-      }
-
-      // Tab key (2 spaces)
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const newValue = mentorCode.substring(0, start) + '  ' + mentorCode.substring(end);
-        setMentorCode(newValue);
-
-        if (isMentor && currentSession?.code) {
-          sessionService.broadcastCode(currentSession.code, {
-            code: newValue,
-            language: fileLang,
-            cursorPos: { line: cursorPos.line, col: cursorPos.col + 2 },
-            timestamp: Date.now(),
-          });
-        }
-
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = start + 2;
-          updateCursorPosition(newValue, start + 2);
-        }, 0);
-        return;
-      }
-
-      // Auto-close brackets & quotes
-      if (autoCloseBrackets) {
-        const pairs: Record<string, string> = {
-          '(': ')',
-          '{': '}',
-          '[': ']',
-          '"': '"',
-          "'": "'",
-        };
-
-        if (pairs[e.key]) {
-          const start = textarea.selectionStart;
-          const end = textarea.selectionEnd;
-          const closeChar = pairs[e.key];
-          const newValue = mentorCode.substring(0, start) + e.key + closeChar + mentorCode.substring(end);
-
+        // ⌘K / Ctrl+K: Command Palette
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
           e.preventDefault();
-          setMentorCode(newValue);
-
-          if (isMentor && currentSession?.code) {
-            sessionService.broadcastCode(currentSession.code, {
-              code: newValue,
-              language: fileLang,
-              cursorPos: { line: cursorPos.line, col: cursorPos.col + 1 },
-              timestamp: Date.now(),
-            });
-          }
-
-          setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = start + 1;
-            updateCursorPosition(newValue, start + 1);
-          }, 0);
+          setIsCommandPaletteOpen((prev) => !prev);
           return;
         }
-      }
-    },
-    [mentorCode, setMentorCode, runCode, formatCurrentCode, autoCloseBrackets, isReadOnly, isMentor, currentSession, fileLang, cursorPos]
-  );
 
-  const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (isReadOnly) return;
+        // ⌘↵ / Ctrl+Enter: Run Code
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          runCode();
+          return;
+        }
 
-    const val = e.target.value;
-    setMentorCode(val);
-    setIsSaved(false);
-    updateCursorPosition(val, e.target.selectionStart);
+        // ⌥⇧F / Alt+Shift+F: Format Code
+        if ((e.altKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          formatCurrentCode();
+          return;
+        }
 
-    // Mentor broadcasts code edits in real-time
-    if (isMentor && currentSession?.code) {
-      sessionService.broadcastCode(currentSession.code, {
-        code: val,
-        language: fileLang,
-        cursorPos: { line: cursorPos.line, col: cursorPos.col },
-        timestamp: Date.now(),
-      });
-    }
+        // Tab key (2 spaces)
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          const newValue = mentorCode.substring(0, start) + '  ' + mentorCode.substring(end);
+          
+          cursorSelectionRef.current = { start: start + 2, end: start + 2 };
+          setMentorCode(newValue);
 
-    if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = window.setTimeout(() => {
-      setIsSaved(true);
-    }, 400);
-  };
+          const linesUpToCursor = newValue.substring(0, start + 2).split('\n');
+          const newPos = {
+            line: linesUpToCursor.length,
+            col: linesUpToCursor[linesUpToCursor.length - 1].length + 1,
+          };
+          setCursorPos(newPos);
+          broadcastLatestCode(newValue, newPos);
+          return;
+        }
+
+        // Auto-close brackets & quotes
+        if (autoCloseBrackets) {
+          const pairs: Record<string, string> = {
+            '(': ')',
+            '{': '}',
+            '[': ']',
+            '"': '"',
+            "'": "'",
+          };
+
+          if (pairs[e.key]) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const closeChar = pairs[e.key];
+            const newValue = mentorCode.substring(0, start) + e.key + closeChar + mentorCode.substring(end);
+
+            e.preventDefault();
+            cursorSelectionRef.current = { start: start + 1, end: start + 1 };
+            setMentorCode(newValue);
+
+            const linesUpToCursor = newValue.substring(0, start + 1).split('\n');
+            const newPos = {
+              line: linesUpToCursor.length,
+              col: linesUpToCursor[linesUpToCursor.length - 1].length + 1,
+            };
+            setCursorPos(newPos);
+            broadcastLatestCode(newValue, newPos);
+            return;
+          }
+        }
+      },
+      [mentorCode, setMentorCode, runCode, formatCurrentCode, autoCloseBrackets, isReadOnly, isMentor, currentSession, fileLang, cursorPos]
+    );
+
+    const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      if (isReadOnly) return;
+
+      const target = e.target;
+      const val = target.value;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+
+      // 1. Capture cursor position before state update
+      cursorSelectionRef.current = { start, end };
+
+      setMentorCode(val);
+      setIsSaved(false);
+      updateCursorPosition(val, start);
+
+      const linesUpToCursor = val.substring(0, start).split('\n');
+      const newPos = {
+        line: linesUpToCursor.length,
+        col: linesUpToCursor[linesUpToCursor.length - 1].length + 1,
+      };
+      broadcastLatestCode(val, newPos);
+
+      if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = window.setTimeout(() => {
+        setIsSaved(true);
+      }, 400);
+    };
+
+    const handleSelectionSync = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+      const target = e.currentTarget;
+      cursorSelectionRef.current = {
+        start: target.selectionStart,
+        end: target.selectionEnd,
+      };
+      updateCursorPosition(mentorCode, target.selectionStart);
+    };
 
   const lines = mentorCode.split('\n');
 
@@ -373,6 +410,9 @@ export const InteractiveCodeEditor: React.FC = () => {
               value={mentorCode}
               onChange={handleCodeChange}
               onKeyDown={handleKeyDown}
+              onSelect={handleSelectionSync}
+              onClick={handleSelectionSync}
+              onKeyUp={handleSelectionSync}
               onScroll={handleScroll}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}

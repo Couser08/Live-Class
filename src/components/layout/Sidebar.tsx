@@ -35,7 +35,6 @@ export const Sidebar: React.FC = () => {
     toggleSidebarCollapse,
     isMobileMenuOpen,
     setMobileMenuOpen,
-    addToast,
   } = useUIStore();
 
   const navLinks = [
@@ -43,6 +42,7 @@ export const Sidebar: React.FC = () => {
     { id: 'sessions', label: 'Sessions', icon: Presentation },
     { id: 'languages', label: 'Languages', icon: Code2 },
     { id: 'my-notes', label: 'My Notes', icon: FileText },
+    { id: 'subscription', label: 'Pro Plans (₹0)', icon: Sparkles },
     { id: 'resources', label: 'Resources', icon: FolderKanban },
     { id: 'achievements', label: 'Achievements', icon: Trophy },
     { id: 'history', label: 'History', icon: History },
@@ -50,11 +50,7 @@ export const Sidebar: React.FC = () => {
   ];
 
   const handleProUpgrade = () => {
-    addToast({
-      type: 'info',
-      title: 'Upgrade to Pro',
-      description: 'Unlimited 1-on-1 rooms, custom IDE themes, and voice rooms coming soon!',
-    });
+    setActiveNavTab('subscription');
   };
 
   const sidebarContent = (
@@ -171,17 +167,25 @@ export const Sidebar: React.FC = () => {
                 <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
                   {activeUser.name}
                 </h4>
-                {activeUser.role === 'mentor' ? (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/60">
-                    <ShieldCheck className="w-2.5 h-2.5" />
-                    <span>Mentor</span>
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
-                    <GraduationCap className="w-2.5 h-2.5" />
-                    <span>Student</span>
-                  </span>
-                )}
+                <div className="flex items-center gap-1">
+                  {activeUser.role === 'mentor' ? (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/60">
+                      <ShieldCheck className="w-2.5 h-2.5" />
+                      <span>Mentor</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+                      <GraduationCap className="w-2.5 h-2.5" />
+                      <span>Student</span>
+                    </span>
+                  )}
+                  {activeUser.isPro && (
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-md text-[9px] font-black bg-gradient-to-r from-amber-500 to-indigo-600 text-white shadow-2xs">
+                      <Sparkles className="w-2 h-2" />
+                      <span>PRO</span>
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                 <span className="truncate max-w-[110px]">{activeUser.email || 'Available'}</span>
@@ -193,33 +197,61 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
 
-        {/* Upgrade Card */}
+        {/* Upgrade Card / Pro Member Status */}
         {!isSidebarCollapsed ? (
-          <div className="pro-card-gradient rounded-2xl p-3.5 text-white shadow-lg shadow-indigo-500/20 space-y-2.5">
-            <div className="w-7 h-7 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Diamond className="w-3.5 h-3.5 text-white" />
-            </div>
-
-            <div>
-              <h5 className="font-bold text-xs tracking-tight">Upgrade to Pro</h5>
-              <p className="text-[10px] text-indigo-100/90 leading-snug mt-0.5">
-                Unlock advanced features & unlimited sessions.
+          activeUser.isPro ? (
+            <div className="rounded-2xl p-3 bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-900 border border-indigo-500/40 text-white shadow-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 rounded-lg bg-amber-400/20 text-amber-300 flex items-center justify-center">
+                    <Sparkles className="w-3 h-3" />
+                  </div>
+                  <span className="text-[11px] font-black tracking-tight">CodeBuddy PRO</span>
+                </div>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  Active
+                </span>
+              </div>
+              <p className="text-[10px] text-indigo-200/90 leading-tight">
+                12-Month Free Trial active with all Pro tools unlocked.
               </p>
+              <button
+                onClick={() => setActiveNavTab('subscription')}
+                className="w-full bg-white/15 hover:bg-white/25 text-white font-bold text-[10px] py-1 px-2 rounded-xl transition-colors cursor-pointer text-center"
+              >
+                View Pro Perks
+              </button>
             </div>
+          ) : (
+            <div className="pro-card-gradient rounded-2xl p-3.5 text-white shadow-lg shadow-indigo-500/20 space-y-2.5">
+              <div className="w-7 h-7 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Diamond className="w-3.5 h-3.5 text-white" />
+              </div>
 
-            <button
-              onClick={handleProUpgrade}
-              className="w-full bg-white text-[#4F46E5] hover:bg-slate-50 font-bold text-[11px] py-1.5 px-2.5 rounded-xl flex items-center justify-center gap-1 shadow-xs transition-transform active:scale-[0.98] cursor-pointer"
-            >
-              <span>Upgrade Now</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
+              <div>
+                <h5 className="font-bold text-xs tracking-tight">CodeBuddy Pro</h5>
+                <p className="text-[10px] text-indigo-100/90 leading-snug mt-0.5">
+                  Claim 12 Months 100% Free as Early Adopter Reward!
+                </p>
+              </div>
+
+              <button
+                onClick={handleProUpgrade}
+                className="w-full bg-white text-[#4F46E5] hover:bg-slate-50 font-bold text-[11px] py-1.5 px-2.5 rounded-xl flex items-center justify-center gap-1 shadow-xs transition-transform active:scale-[0.98] cursor-pointer"
+              >
+                <span>Claim 12 Mo Free</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+          )
         ) : (
           <button
             onClick={handleProUpgrade}
-            title="Upgrade to Pro"
-            className="w-full p-2.5 rounded-xl bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition-colors"
+            title={activeUser.isPro ? "CodeBuddy Pro Active" : "Claim 12-Month Pro Free Trial"}
+            className={cn(
+              "w-full p-2.5 rounded-xl flex items-center justify-center transition-colors cursor-pointer",
+              activeUser.isPro ? "bg-amber-500 text-white hover:bg-amber-600" : "bg-indigo-600 text-white hover:bg-indigo-700"
+            )}
           >
             <Diamond className="w-4 h-4" />
           </button>

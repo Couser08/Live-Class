@@ -19,6 +19,8 @@ interface UIState {
   modalDefaultLanguage: SupportedLanguage;
   activeSessionTab: 'editor' | 'files';
   bottomPanelTab: 'chat' | 'notes';
+  isClaimRewardModalOpen: boolean;
+  isTourModalOpen: boolean;
   toasts: ToastMessage[];
   setActiveNavTab: (tab: string) => void;
   toggleSidebarCollapse: () => void;
@@ -27,6 +29,10 @@ interface UIState {
   closeNewSessionModal: () => void;
   openJoinModal: (code?: string) => void;
   closeJoinModal: () => void;
+  openClaimRewardModal: () => void;
+  closeClaimRewardModal: () => void;
+  openTourModal: () => void;
+  closeTourModal: () => void;
   setActiveSessionTab: (tab: 'editor' | 'files') => void;
   setBottomPanelTab: (tab: 'chat' | 'notes') => void;
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
@@ -44,6 +50,8 @@ export const useUIStore = create<UIState>((set) => ({
   modalDefaultLanguage: 'html',
   activeSessionTab: 'editor',
   bottomPanelTab: 'chat',
+  isClaimRewardModalOpen: false,
+  isTourModalOpen: false,
   toasts: [],
 
   setActiveNavTab: (tab: string) => set({ activeNavTab: tab, isMobileMenuOpen: false }),
@@ -61,6 +69,14 @@ export const useUIStore = create<UIState>((set) => ({
   openJoinModal: (code = '') => set({ isJoinModalOpen: true, joinModalPrefillCode: code }),
 
   closeJoinModal: () => set({ isJoinModalOpen: false, joinModalPrefillCode: '' }),
+
+  openClaimRewardModal: () => set({ isClaimRewardModalOpen: true }),
+
+  closeClaimRewardModal: () => set({ isClaimRewardModalOpen: false }),
+
+  openTourModal: () => set({ isTourModalOpen: true }),
+
+  closeTourModal: () => set({ isTourModalOpen: false }),
 
   setActiveSessionTab: (tab) => set({ activeSessionTab: tab }),
 

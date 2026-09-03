@@ -10,6 +10,7 @@ import {
   GraduationCap,
   LayoutGrid,
   ChevronDown,
+  Sparkles,
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
@@ -113,6 +114,13 @@ export const SessionHeader: React.FC = () => {
                 <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                   <GraduationCap className="w-3 h-3" />
                   <span>Student (Following)</span>
+                </span>
+              )}
+
+              {(authUser?.isPro || currentUser?.isPro) && (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-black bg-gradient-to-r from-amber-500 via-pink-500 to-indigo-600 text-white shadow-2xs">
+                  <Sparkles className="w-3 h-3 text-amber-200" />
+                  <span>PRO</span>
                 </span>
               )}
 

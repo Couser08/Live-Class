@@ -15,9 +15,25 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('mentor', 'student', 'friend', 'viewer')),
     is_online BOOLEAN DEFAULT false,
     status_text TEXT DEFAULT 'Available to Learn',
+    is_pro BOOLEAN DEFAULT false,
+    pro_plan TEXT DEFAULT NULL,
+    trial_expires_at TIMESTAMPTZ DEFAULT NULL,
+    phone TEXT DEFAULT NULL,
+    stream TEXT DEFAULT NULL, -- e.g. BCA, MCA, B.Tech
+    college_year TEXT DEFAULT NULL,
+    target_goal TEXT DEFAULT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Idempotent column additions for existing profiles table
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_pro BOOLEAN DEFAULT false;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS pro_plan TEXT DEFAULT NULL;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT NULL;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stream TEXT DEFAULT NULL;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS college_year TEXT DEFAULT NULL;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS target_goal TEXT DEFAULT NULL;
 
 -- 2. SESSIONS (CLASSROOM ROOMS) TABLE
 CREATE TABLE IF NOT EXISTS public.sessions (

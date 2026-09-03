@@ -26,6 +26,12 @@ interface AuthState {
   closeProfileModal: () => void;
   signIn: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (name: string, email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  claimProTrial: (details: {
+    phone: string;
+    stream: string;
+    collegeYear: string;
+    targetGoal: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   demoLogin: (role: 'mentor' | 'student') => void;
   initializeAuth: () => Promise<void>;
@@ -38,6 +44,8 @@ const DEFAULT_MENTOR: UserProfile = {
   role: 'mentor',
   isOnline: true,
   statusText: 'Senior Peer Mentor',
+  isPro: true,
+  proPlan: 'Mentor Pro Lifetime',
   avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
 };
 
@@ -62,7 +70,7 @@ const getStoredUser = (): UserProfile | null => {
   return null;
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: getStoredUser(),
   isLoading: false,
   isAuthModalOpen: false,
@@ -195,6 +203,59 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ isLoading: false });
       return { success: false, error: err?.message || 'Failed to sign up.' };
     }
+  },
+
+  claimProTrial: async (details) => {
+    const currentUser = get().user || {
+      id: `usr_${Date.now()}`,
+      name: 'Student Learner',
+      email: 'learner@codebuddy.app',
+      role: 'student' as const,
+      isOnline: true,
+      statusText: 'PRO Student Learner',
+    };
+
+    const oneYearLater = new Date();
+    oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+    const trialExpiresAt = oneYearLater.toISOString();
+
+    const updatedProfile: UserProfile = {
+      ...currentUser,
+      isPro: true,
+      proPlan: '12-Month Student Early Bird Reward',
+      trialExpiresAt,
+      phone: details.phone,
+      stream: details.stream,
+      collegeYear: details.collegeYear,
+      targetGoal: details.targetGoal,
+    };
+
+    localStorage.setItem('codebuddy_auth_user', JSON.stringify(updatedProfile));
+    set({ user: updatedProfile });
+
+    if (typeof window !== 'undefined') {
+      import('./sessionStore').then(({ useSessionStore }) => {
+        useSessionStore.getState().setCurrentUser(updatedProfile);
+      });
+    }
+
+    if (isSupabaseConfigured && currentUser.id) {
+      try {
+        await supabase.from('profiles').update({
+          is_pro: true,
+          pro_plan: '12-Month Student Early Bird Reward',
+          trial_expires_at: trialExpiresAt,
+          phone: details.phone,
+          stream: details.stream,
+          college_year: details.collegeYear,
+          target_goal: details.targetGoal,
+        }).eq('id', currentUser.id);
+      } catch (err) {
+        console.warn('Supabase pro profile update error:', err);
+      }
+    }
+
+    return { success: true };
   },
 
   signOut: async () => {

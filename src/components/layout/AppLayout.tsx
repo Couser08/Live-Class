@@ -3,6 +3,8 @@ import { Sidebar } from './Sidebar';
 import { ToastContainer } from '../common/ToastContainer';
 import { AuthModal } from '../auth/AuthModal';
 import { UserProfileModal } from '../auth/UserProfileModal';
+import { ClaimRewardModal } from '../subscription/ClaimRewardModal';
+import { ProductTourModal } from '../subscription/ProductTourModal';
 import { useUIStore } from '../../stores/uiStore';
 
 interface AppLayoutProps {
@@ -36,9 +38,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {/* Global Floating Toasts */}
       <ToastContainer />
 
-      {/* Global Auth Modal & User Profile Modal */}
+      {/* Global Modals */}
       <AuthModal />
       <UserProfileModal />
+      <ClaimRewardModal />
+      <ProductTourModal />
     </div>
   );
 };

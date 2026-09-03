@@ -8,6 +8,14 @@ export interface UserProfile {
   role: UserRole;
   isOnline: boolean;
   statusText?: string;
+  // Pro Subscription Details
+  isPro?: boolean;
+  proPlan?: string;
+  trialExpiresAt?: string;
+  phone?: string;
+  stream?: string; // BCA, MCA, B.Tech, etc.
+  collegeYear?: string;
+  targetGoal?: string;
 }
 
 export type SupportedLanguage = 'html' | 'c' | 'javascript';

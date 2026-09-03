@@ -5,15 +5,16 @@ import { Avatar } from '../common/Avatar';
 import { useAuthStore, isMentorEmail } from '../../stores/authStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useUIStore } from '../../stores/uiStore';
-import { ShieldCheck, GraduationCap, Mail, LogOut, Settings, RefreshCw, Radio, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, GraduationCap, Mail, LogOut, Settings, RefreshCw, Radio, CheckCircle2, Sparkles, Gift } from 'lucide-react';
 
 export const UserProfileModal: React.FC = () => {
   const { user, isProfileModalOpen, closeProfileModal, openAuthModal, signOut } = useAuthStore();
   const { currentUser } = useSessionStore();
-  const { setActiveNavTab, addToast } = useUIStore();
+  const { setActiveNavTab, addToast, openClaimRewardModal } = useUIStore();
 
   const activeUser = user || currentUser;
   const isMentor = isMentorEmail(activeUser?.email);
+  const isPro = activeUser?.isPro || false;
 
   if (!activeUser) return null;
 
@@ -82,6 +83,60 @@ export const UserProfileModal: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Pro Membership Banner */}
+        {isPro ? (
+          <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-indigo-500/10 border border-amber-500/30 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white flex items-center justify-center shadow-xs">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <div className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span>CodeBuddy Pro Member</span>
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500 text-white">PRO</span>
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                  {activeUser.proPlan || '12-Month Free Trial Reward'} • Valid till Sep 2027
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                closeProfileModal();
+                setActiveNavTab('subscription');
+              }}
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+            >
+              Perks
+            </button>
+          </div>
+        ) : (
+          <div className="p-3 rounded-2xl bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Gift className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white">
+                  Claim 12-Month Pro Free Trial
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Beta Launch Reward: 100% Free for 1 Year
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                closeProfileModal();
+                openClaimRewardModal();
+              }}
+              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] transition-colors cursor-pointer"
+            >
+              Claim ₹0
+            </button>
+          </div>
+        )}
 
         {/* Status & Privileges Box */}
         <div className="grid grid-cols-2 gap-3">

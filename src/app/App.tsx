@@ -6,6 +6,7 @@ import { SessionWorkspace } from './SessionWorkspace';
 import { LanguagesPage } from './LanguagesPage';
 import { MyNotesPage } from './MyNotesPage';
 import { SettingsPage } from './SettingsPage';
+import { SubscriptionPage } from '../pages/SubscriptionPage';
 import { UnderDevelopmentPage } from './UnderDevelopmentPage';
 import { useUIStore } from '../stores/uiStore';
 import { useAuthStore } from '../stores/authStore';
@@ -48,6 +49,9 @@ export const App: React.FC = () => {
 
       case 'settings':
         return <SettingsPage />;
+
+      case 'subscription':
+        return <SubscriptionPage />;
 
       default:
         return <HomePage />;

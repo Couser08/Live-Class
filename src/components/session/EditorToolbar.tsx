@@ -3,6 +3,7 @@ import { Code2, Folder, RotateCw, Play, Zap, GraduationCap, ShieldCheck } from '
 import { useUIStore } from '../../stores/uiStore';
 import { useCodeStore } from '../../stores/codeStore';
 import { useSessionStore } from '../../stores/sessionStore';
+import { useAuthStore, isMentorEmail } from '../../stores/authStore';
 import { cn } from '../../lib/utils';
 
 interface EditorToolbarProps {
@@ -17,8 +18,9 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onRefreshPreview }
     autoRun,
     toggleAutoRun,
   } = useCodeStore();
-  const { userRoleInSession, isSandboxMode } = useSessionStore();
-  const isMentor = userRoleInSession === 'mentor';
+  const { user: authUser } = useAuthStore();
+  const { userRoleInSession, currentUser, isSandboxMode } = useSessionStore();
+  const isMentor = isMentorEmail(authUser?.email || currentUser?.email) || userRoleInSession === 'mentor';
 
   const fileName =
     activeLanguage === 'html' ? 'index.html' : activeLanguage === 'c' ? 'main.c' : 'script.js';

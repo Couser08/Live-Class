@@ -9,6 +9,7 @@ import { useCodeStore } from '../../stores/codeStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { sessionService } from '../../services/sessionService';
+import { useAuthStore, isMentorEmail } from '../../stores/authStore';
 import { EditorStatusBarPro } from './EditorStatusBarPro';
 import { CommandPaletteModal } from './CommandPaletteModal';
 import { Lock, Radio, FlaskConical, ArrowLeft } from 'lucide-react';
@@ -17,9 +18,10 @@ import { cn } from '../../lib/utils';
 export const InteractiveCodeEditor: React.FC = () => {
   const { mentorCode, setMentorCode, activeLanguage, files, activeFileId, runCode, formatCurrentCode } = useCodeStore();
   const { editorFontSize, lineNumbers, autoCloseBrackets, highlightActiveLine, editorTheme, tabSize } = useSettingsStore();
-  const { currentSession, userRoleInSession, isSandboxMode, toggleSandboxMode, mentorCursorPos, setMentorCursor } = useSessionStore();
+  const { user: authUser } = useAuthStore();
+  const { currentSession, currentUser, userRoleInSession, isSandboxMode, toggleSandboxMode, mentorCursorPos, setMentorCursor } = useSessionStore();
 
-  const isMentor = userRoleInSession === 'mentor';
+  const isMentor = isMentorEmail(authUser?.email || currentUser?.email) || userRoleInSession === 'mentor';
   const isReadOnly = !isMentor && !isSandboxMode;
 
   const activeFile = files.find((f) => f.id === activeFileId) || files[0];

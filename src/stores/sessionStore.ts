@@ -44,6 +44,21 @@ const defaultGuestUser: UserProfile = {
   avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
 };
 
+const getInitialUser = (): UserProfile => {
+  if (typeof window === 'undefined') return defaultGuestUser;
+  try {
+    const raw = localStorage.getItem('codebuddy_auth_user');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.email) return parsed;
+    }
+  } catch {}
+  return defaultGuestUser;
+};
+
+const initialUser = getInitialUser();
+const initialIsMentor = isMentorEmail(initialUser.email);
+
 const getSavedSessions = (): RoomSession[] => {
   if (typeof window === 'undefined') return [];
   try {
@@ -57,9 +72,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   currentSession: null,
   activeSessionCardData: null,
   activeSessionsList: getSavedSessions(),
-  currentUser: defaultGuestUser,
-  userRoleInSession: 'student',
-  isFollowingMentor: true,
+  currentUser: initialUser,
+  userRoleInSession: initialIsMentor ? 'mentor' : 'student',
+  isFollowingMentor: !initialIsMentor,
   isSandboxMode: false,
   mentorCursorPos: { line: 1, col: 1 },
   metrics: {
@@ -247,10 +262,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   setCurrentUser: (user: Partial<UserProfile>) => {
-    set((state) => ({
-      currentUser: { ...state.currentUser, ...user },
-      userRoleInSession: isMentorEmail(user.email || state.currentUser.email) ? 'mentor' : 'student',
-    }));
+    set((state) => {
+      const updatedUser = { ...state.currentUser, ...user };
+      const isMentor = isMentorEmail(updatedUser.email);
+      return {
+        currentUser: updatedUser,
+        userRoleInSession: isMentor ? 'mentor' : 'student',
+        isFollowingMentor: !isMentor,
+      };
+    });
   },
 
   toggleSandboxMode: () => {

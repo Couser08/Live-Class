@@ -55,6 +55,19 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // Synchronize useAuthStore with useSessionStore on any user update
+    const unsubAuthSync = useAuthStore.subscribe((state) => {
+      if (state.user) {
+        useSessionStore.getState().setCurrentUser(state.user);
+      }
+    });
+
+    // Sync immediately on mount if user is already in local storage
+    const currentAuthUser = useAuthStore.getState().user;
+    if (currentAuthUser) {
+      useSessionStore.getState().setCurrentUser(currentAuthUser);
+    }
+
     // Initialize Supabase Auth state listener
     useAuthStore.getState().initializeAuth();
 
@@ -92,6 +105,10 @@ export const App: React.FC = () => {
         useUIStore.getState().openJoinModal(code);
       }
     }
+
+    return () => {
+      unsubAuthSync();
+    };
   }, []);
 
   return (

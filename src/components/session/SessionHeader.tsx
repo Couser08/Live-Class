@@ -16,12 +16,15 @@ import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { useUIStore } from '../../stores/uiStore';
 import { useSessionStore } from '../../stores/sessionStore';
+import { useAuthStore, isMentorEmail } from '../../stores/authStore';
 import { useClipboard } from '../../hooks/useClipboard';
 
 export const SessionHeader: React.FC = () => {
   const { addToast, openNewSessionModal } = useUIStore();
+  const { user: authUser } = useAuthStore();
   const {
     currentSession,
+    currentUser,
     endSession,
     leaveSession,
     userRoleInSession,
@@ -30,7 +33,7 @@ export const SessionHeader: React.FC = () => {
   } = useSessionStore();
   const { copy, hasCopied } = useClipboard();
 
-  const isMentor = userRoleInSession === 'mentor';
+  const isMentor = isMentorEmail(authUser?.email || currentUser?.email) || userRoleInSession === 'mentor';
   const [isEndModalOpen, setIsEndModalOpen] = useState(false);
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);

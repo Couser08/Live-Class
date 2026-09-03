@@ -5,16 +5,17 @@ import { Button } from '../common/Button';
 import { Avatar } from '../common/Avatar';
 import { Radio, Plus, KeyRound, ArrowRight, Sparkles } from 'lucide-react';
 import { useSessionStore } from '../../stores/sessionStore';
+import { useAuthStore, isMentorEmail } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
-import { isMentorEmail } from '../../stores/authStore';
 import { SupportedLanguage, RoomSession } from '../../types/session.types';
 
 export const SessionHub: React.FC = () => {
   const { activeSessionsList, currentUser, selectSession } = useSessionStore();
+  const { user: authUser } = useAuthStore();
   const { openNewSessionModal, openJoinModal, addToast } = useUIStore();
   const [langFilter, setLangFilter] = useState<'all' | SupportedLanguage>('all');
 
-  const isMentor = isMentorEmail(currentUser.email);
+  const isMentor = isMentorEmail(authUser?.email || currentUser?.email);
 
   const filteredSessions = activeSessionsList.filter(
     (s) => langFilter === 'all' || s.language === langFilter

@@ -12,7 +12,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useSessionStore } from '../../stores/sessionStore';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore, isMentorEmail } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { sessionService, ChatMessageItem } from '../../services/sessionService';
 import { Avatar } from '../common/Avatar';
@@ -27,7 +27,7 @@ export const SessionChatPanel: React.FC = () => {
   const { copy, hasCopied } = useClipboard();
 
   const activeUser = authUser || currentUser;
-  const isMentor = userRoleInSession === 'mentor';
+  const isMentor = isMentorEmail(activeUser?.email) || userRoleInSession === 'mentor';
 
   const [bottomPanelTab, setBottomPanelTab] = useState<'chat' | 'notes'>('chat');
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);

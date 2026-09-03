@@ -18,9 +18,12 @@ interface AuthState {
   isLoading: boolean;
   isAuthModalOpen: boolean;
   authModalMode: 'signin' | 'signup';
+  isProfileModalOpen: boolean;
   
   openAuthModal: (mode?: 'signin' | 'signup') => void;
   closeAuthModal: () => void;
+  openProfileModal: () => void;
+  closeProfileModal: () => void;
   signIn: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (name: string, email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
@@ -64,13 +67,22 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: false,
   isAuthModalOpen: false,
   authModalMode: 'signin',
+  isProfileModalOpen: false,
 
   openAuthModal: (mode = 'signin') => {
-    set({ isAuthModalOpen: true, authModalMode: mode });
+    set({ isAuthModalOpen: true, authModalMode: mode, isProfileModalOpen: false });
   },
 
   closeAuthModal: () => {
     set({ isAuthModalOpen: false });
+  },
+
+  openProfileModal: () => {
+    set({ isProfileModalOpen: true, isAuthModalOpen: false });
+  },
+
+  closeProfileModal: () => {
+    set({ isProfileModalOpen: false });
   },
 
   signIn: async (email: string, password = 'password123') => {

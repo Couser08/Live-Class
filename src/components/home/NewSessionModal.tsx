@@ -6,7 +6,7 @@ import { Button } from '../common/Button';
 import { SupportedLanguage } from '../../types/session.types';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useCodeStore } from '../../stores/codeStore';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore, isMentorEmail } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useClipboard } from '../../hooks/useClipboard';
 
@@ -14,7 +14,7 @@ export const NewSessionModal: React.FC = () => {
   const { isNewSessionModalOpen, closeNewSessionModal, modalDefaultLanguage, addToast, setActiveNavTab } = useUIStore();
   const createSession = useSessionStore((state) => state.createSession);
   const { user, openAuthModal } = useAuthStore();
-  const isMentor = user?.role === 'mentor';
+  const isMentor = isMentorEmail(user?.email) || user?.role === 'mentor';
 
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(modalDefaultLanguage);
   const [title, setTitle] = useState('');

@@ -26,7 +26,7 @@ import { cn } from '../../lib/utils';
 
 export const Sidebar: React.FC = () => {
   const currentUser = useSessionStore((state) => state.currentUser);
-  const { user: authUser, openAuthModal } = useAuthStore();
+  const { user: authUser, openAuthModal, openProfileModal } = useAuthStore();
   const activeUser = authUser || currentUser;
   const {
     activeNavTab,
@@ -146,12 +146,18 @@ export const Sidebar: React.FC = () => {
       <div className="space-y-3 pt-4 border-t border-slate-200/60 dark:border-slate-800/70">
         {/* User Card */}
         <div
-          onClick={() => openAuthModal('signin')}
+          onClick={() => {
+            if (authUser) {
+              openProfileModal();
+            } else {
+              openAuthModal('signin');
+            }
+          }}
           className={cn(
             'bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200/70 dark:border-slate-700/60 shadow-xs flex items-center gap-2.5 transition-all cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-600 group/user',
             isSidebarCollapsed ? 'p-2 justify-center' : 'p-2.5'
           )}
-          title="Click to Switch Account or Sign In"
+          title={authUser ? "View Profile & Teaching Role" : "Click to Sign In"}
         >
           <Avatar
             src={activeUser.avatarUrl}
@@ -180,7 +186,7 @@ export const Sidebar: React.FC = () => {
               <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                 <span className="truncate max-w-[110px]">{activeUser.email || 'Available'}</span>
                 <span className="text-indigo-500 opacity-0 group-hover/user:opacity-100 transition-opacity font-semibold">
-                  Switch
+                  {authUser ? 'Profile' : 'Sign In'}
                 </span>
               </div>
             </div>

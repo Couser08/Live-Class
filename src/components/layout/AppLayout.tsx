@@ -2,6 +2,7 @@ import React from 'react';
 import { Sidebar } from './Sidebar';
 import { ToastContainer } from '../common/ToastContainer';
 import { AuthModal } from '../auth/AuthModal';
+import { UserProfileModal } from '../auth/UserProfileModal';
 import { useUIStore } from '../../stores/uiStore';
 
 interface AppLayoutProps {
@@ -35,8 +36,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {/* Global Floating Toasts */}
       <ToastContainer />
 
-      {/* Global Auth Modal */}
+      {/* Global Auth Modal & User Profile Modal */}
       <AuthModal />
+      <UserProfileModal />
     </div>
   );
 };

@@ -10,8 +10,8 @@ export const MockEditorPreview: React.FC = () => {
 
   const { isTyping } = useDelayedTypewriter({
     targetText: mentorCode,
-    delayMs: 800,
-    typingSpeedMs: 12,
+    delayMs: 500,
+    typingSpeedMs: 10,
   });
 
   return (
@@ -105,7 +105,7 @@ export const MockEditorPreview: React.FC = () => {
             {isTyping && (
               <div className="mt-2.5 flex items-center gap-1.5 text-[9px] sm:text-[10px] text-indigo-600 font-medium animate-pulse">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
-                <span>Typing stream active (+1s delay)...</span>
+                <span>Typing stream active (500ms delay)...</span>
               </div>
             )}
           </div>

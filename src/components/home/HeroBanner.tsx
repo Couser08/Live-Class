@@ -72,9 +72,9 @@ export const HeroBanner: React.FC = () => {
 
           {/* Right Dual-Window Editor & Live Preview Showcase */}
           <div className="lg:col-span-6 w-full flex items-center justify-center">
-            <div className="relative flex items-center w-full max-w-[480px]">
+            <div className="relative flex items-center w-full max-w-[500px]">
               {/* Left Window: Code Editor */}
-              <div className="w-[58%] rounded-2xl bg-[#0F141F] border border-slate-800 shadow-xl overflow-hidden text-slate-300 z-10 flex flex-col">
+              <div className="w-[55%] rounded-2xl bg-[#0F141F] border border-slate-800 shadow-xl overflow-hidden text-slate-300 z-10 flex flex-col shrink-0">
                 {/* Window Header */}
                 <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800/80 bg-[#141A28]">
                   <span className="text-[11px] font-mono text-slate-300 font-medium">index.html</span>
@@ -109,30 +109,30 @@ export const HeroBanner: React.FC = () => {
               </div>
 
               {/* Center Lightning Badge */}
-              <div className="absolute left-[54%] top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shadow-lg border-2 border-white dark:border-slate-800">
+              <div className="absolute left-[55%] top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shadow-lg border-2 border-white dark:border-slate-800 pointer-events-none">
                 <Zap className="w-4 h-4 fill-white" />
               </div>
 
               {/* Right Window: Live Browser Preview */}
-              <div className="w-[50%] -ml-6 rounded-2xl bg-white dark:bg-[#161D2B] border border-slate-200/90 dark:border-slate-700 shadow-xl overflow-hidden flex flex-col z-0">
+              <div className="w-[50%] -ml-4 rounded-2xl bg-white dark:bg-[#161D2B] border border-slate-200/90 dark:border-slate-700 shadow-xl overflow-hidden flex flex-col z-0">
                 {/* Browser Controls Header */}
-                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-[#131926]">
+                <div className="flex items-center justify-between pl-6 pr-3 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-[#131926]">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
-                    <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
-                    <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
+                    <span className="w-2 h-2 rounded-full bg-rose-400" />
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
                   </div>
                   <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 flex items-center gap-1">
                     <span className="text-slate-400">+</span> Live Preview
                   </span>
                 </div>
 
-                {/* Live Preview Rendered Body */}
-                <div className="p-5 flex flex-col justify-center min-h-[190px] space-y-2">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                {/* Live Preview Rendered Body - padded so text is clearly visible */}
+                <div className="pl-8 pr-4 py-8 flex flex-col justify-center min-h-[190px] space-y-1.5">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">
                     Hello, World!
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal whitespace-nowrap">
                     Learning HTML is fun 🚀
                   </p>
                 </div>
@@ -167,9 +167,9 @@ export const HeroBanner: React.FC = () => {
               2
             </div>
             <div>
-              <h4 className="font-bold text-sm text-slate-900 dark:text-white">Live 1-Second Smooth Follow Mode</h4>
+              <h4 className="font-bold text-sm text-slate-900 dark:text-white">Live 500ms Smooth Follow Mode</h4>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                As mentor types, code streams to student screens with real-time cursor highlighting and follow mode.
+                As mentor types, code streams to student screens with real-time 500ms follow mode and cursor highlighting.
               </p>
             </div>
           </div>

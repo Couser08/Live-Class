@@ -2,15 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 
 interface UseDelayedTypewriterOptions {
   targetText: string;
-  delayMs?: number;      // Initial delay before friend starts seeing changes (default 1000ms)
-  typingSpeedMs?: number; // Speed per character (default 18ms)
+  delayMs?: number;      // Initial delay before friend starts seeing changes (default 500ms)
+  typingSpeedMs?: number; // Speed per character (default 12ms)
   enabled?: boolean;
 }
 
 export function useDelayedTypewriter({
   targetText,
-  delayMs = 1000,
-  typingSpeedMs = 15,
+  delayMs = 500,
+  typingSpeedMs = 12,
   enabled = true,
 }: UseDelayedTypewriterOptions) {
   const [displayedText, setDisplayedText] = useState(targetText);

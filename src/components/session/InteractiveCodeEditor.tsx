@@ -35,23 +35,32 @@ export const InteractiveCodeEditor: React.FC = () => {
   const editorRef = useRef<ReactCodeMirrorRef>(null);
   const saveTimerRef = useRef<number | null>(null);
   const broadcastTimerRef = useRef<number | null>(null);
+  const latestCodeRef = useRef(mentorCode);
+  const latestCursorRef = useRef(cursorPos);
 
-  // Micro-throttled real-time broadcast to connected students (40ms)
+  useEffect(() => {
+    latestCodeRef.current = mentorCode;
+  }, [mentorCode]);
+
+  // Micro-throttled real-time broadcast to connected students (30ms)
   const broadcastLatestCode = useCallback((code: string, pos: { line: number; col: number }) => {
     if (!isMentor || !currentSession?.code) return;
+    latestCodeRef.current = code;
+    latestCursorRef.current = pos;
     if (broadcastTimerRef.current) window.clearTimeout(broadcastTimerRef.current);
     broadcastTimerRef.current = window.setTimeout(() => {
       sessionService.broadcastCode(currentSession.code, {
-        code,
+        code: latestCodeRef.current,
         language: fileLang,
-        cursorPos: pos,
+        cursorPos: latestCursorRef.current,
         timestamp: Date.now(),
       });
-    }, 40);
+    }, 30);
   }, [isMentor, currentSession?.code, fileLang]);
 
   // Code change dispatcher
   const handleCodeChange = useCallback((val: string) => {
+    latestCodeRef.current = val;
     setMentorCode(val);
     setIsSaved(false);
 
@@ -60,8 +69,8 @@ export const InteractiveCodeEditor: React.FC = () => {
       setIsSaved(true);
     }, 400);
 
-    broadcastLatestCode(val, cursorPos);
-  }, [setMentorCode, broadcastLatestCode, cursorPos]);
+    broadcastLatestCode(val, latestCursorRef.current);
+  }, [setMentorCode, broadcastLatestCode]);
 
   // Language grammar extension selector
   const languageExtension = useMemo(() => {
@@ -159,23 +168,30 @@ export const InteractiveCodeEditor: React.FC = () => {
     }
   }, [currentSession?.language]);
 
-  // Real-time synchronization: Students follow mentor broadcast
+  // Real-time synchronization: Students follow mentor broadcast with 500ms smooth delay
   useEffect(() => {
     if (!currentSession?.code) return;
 
+    let syncTimeout: number | null = null;
     const unsubscribe = sessionService.subscribeToRoom(currentSession.code, {
       onCodeStream: (payload) => {
         if (!isMentor && !isSandboxMode) {
-          setMentorCode(payload.code);
-          if (payload.cursorPos) {
-            setMentorCursor(payload.cursorPos);
-          }
+          if (syncTimeout) window.clearTimeout(syncTimeout);
+          syncTimeout = window.setTimeout(() => {
+            setMentorCode(payload.code);
+            if (payload.cursorPos) {
+              setMentorCursor(payload.cursorPos);
+            }
+          }, 500); // Reduced to 500ms
         }
       },
       onChatMessage: () => {},
     });
 
-    return unsubscribe;
+    return () => {
+      if (syncTimeout) window.clearTimeout(syncTimeout);
+      unsubscribe?.();
+    };
   }, [currentSession?.code, isMentor, isSandboxMode, setMentorCode, setMentorCursor]);
 
   const getThemeBg = () => {
@@ -273,12 +289,20 @@ export const InteractiveCodeEditor: React.FC = () => {
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onUpdate={(viewUpdate) => {
-            if (viewUpdate.selectionSet) {
+            if (viewUpdate.selectionSet && !viewUpdate.docChanged) {
               const head = viewUpdate.state.selection.main.head;
               const line = viewUpdate.state.doc.lineAt(head);
               const newPos = { line: line.number, col: head - line.from + 1 };
               setCursorPos(newPos);
-              broadcastLatestCode(mentorCode, newPos);
+              latestCursorRef.current = newPos;
+              if (isMentor && currentSession?.code) {
+                sessionService.broadcastCode(currentSession.code, {
+                  code: latestCodeRef.current,
+                  language: fileLang,
+                  cursorPos: newPos,
+                  timestamp: Date.now(),
+                });
+              }
             }
           }}
           basicSetup={{

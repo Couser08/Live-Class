@@ -35,12 +35,20 @@ export interface RealtimeCodePayload {
   timestamp?: number;
 }
 
-// In-browser BroadcastChannel for zero-latency cross-tab communication on localhost
+// In-browser BroadcastChannel singleton cache for zero-latency cross-tab communication
+const channelCache = new Map<string, BroadcastChannel>();
+
 const getBroadcastChannel = (roomCode: string): BroadcastChannel | null => {
-  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-    return new BroadcastChannel(`codebuddy_room_${roomCode.toUpperCase()}`);
+  if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return null;
+  const clean = roomCode.trim().toUpperCase();
+  if (!channelCache.has(clean)) {
+    try {
+      channelCache.set(clean, new BroadcastChannel(`codebuddy_room_${clean}`));
+    } catch {
+      return null;
+    }
   }
-  return null;
+  return channelCache.get(clean) || null;
 };
 
 export const sessionService = {
@@ -206,14 +214,25 @@ export const sessionService = {
    * Broadcast code change to connected students
    */
   broadcastCode(roomCode: string, payload: RealtimeCodePayload) {
-    const channel = getBroadcastChannel(roomCode);
+    const clean = roomCode.trim().toUpperCase();
+    const channel = getBroadcastChannel(clean);
     if (channel) {
-      channel.postMessage({ type: 'CODE_STREAM', payload });
+      try {
+        channel.postMessage({ type: 'CODE_STREAM', payload });
+      } catch {}
     }
+
+    // LocalStorage fallback for zero-loss cross-tab sync
+    try {
+      localStorage.setItem(`cb_sync_${clean}`, JSON.stringify({
+        payload,
+        t: payload.timestamp || Date.now(),
+      }));
+    } catch {}
 
     if (isSupabaseConfigured) {
       try {
-        const sbChannel = supabase.channel(`room:${roomCode.toUpperCase()}`);
+        const sbChannel = supabase.channel(`room:${clean}`);
         sbChannel.send({
           type: 'broadcast',
           event: 'code_stream',
@@ -227,14 +246,24 @@ export const sessionService = {
    * Broadcast a chat message or Q&A question
    */
   broadcastMessage(roomCode: string, message: ChatMessageItem) {
-    const channel = getBroadcastChannel(roomCode);
+    const clean = roomCode.trim().toUpperCase();
+    const channel = getBroadcastChannel(clean);
     if (channel) {
-      channel.postMessage({ type: 'CHAT_MESSAGE', payload: message });
+      try {
+        channel.postMessage({ type: 'CHAT_MESSAGE', payload: message });
+      } catch {}
     }
+
+    try {
+      localStorage.setItem(`cb_chat_${clean}`, JSON.stringify({
+        message,
+        t: Date.now(),
+      }));
+    } catch {}
 
     if (isSupabaseConfigured) {
       try {
-        const sbChannel = supabase.channel(`room:${roomCode.toUpperCase()}`);
+        const sbChannel = supabase.channel(`room:${clean}`);
         sbChannel.send({
           type: 'broadcast',
           event: 'chat_message',
@@ -255,16 +284,23 @@ export const sessionService = {
       onChatMessage?: (payload: ChatMessageItem) => void;
     }
   ) {
-    const cleanCode = roomCode.toUpperCase();
+    const cleanCode = roomCode.trim().toUpperCase();
     const channel = getBroadcastChannel(cleanCode);
+
+    let lastCodeTimestamp = 0;
+    const handleCodePayload = (payload: RealtimeCodePayload) => {
+      if (payload.timestamp && payload.timestamp < lastCodeTimestamp) return;
+      if (payload.timestamp) lastCodeTimestamp = payload.timestamp;
+      callbacks.onCodeStream?.(payload);
+      callbacks.onCodeUpdate?.(payload);
+    };
 
     const handleMsg = (event: MessageEvent) => {
       const data = event.data;
       if (!data) return;
-      if (data.type === 'CODE_STREAM') {
-        callbacks.onCodeStream?.(data.payload);
-        callbacks.onCodeUpdate?.(data.payload);
-      } else if (data.type === 'CHAT_MESSAGE') {
+      if (data.type === 'CODE_STREAM' && data.payload) {
+        handleCodePayload(data.payload);
+      } else if (data.type === 'CHAT_MESSAGE' && data.payload) {
         callbacks.onChatMessage?.(data.payload);
       }
     };
@@ -273,14 +309,36 @@ export const sessionService = {
       channel.addEventListener('message', handleMsg);
     }
 
+    // Storage event listener ensures changes always reflect even across disparate browser windows
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === `cb_sync_${cleanCode}` && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed?.payload) {
+            handleCodePayload(parsed.payload);
+          }
+        } catch {}
+      } else if (e.key === `cb_chat_${cleanCode}` && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed?.message) {
+            callbacks.onChatMessage?.(parsed.message);
+          }
+        } catch {}
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorage);
+    }
+
     let sbSubscription: any = null;
     if (isSupabaseConfigured) {
       try {
         sbSubscription = supabase
           .channel(`room:${cleanCode}`)
           .on('broadcast', { event: 'code_stream' }, ({ payload }) => {
-            callbacks.onCodeStream?.(payload);
-            callbacks.onCodeUpdate?.(payload);
+            handleCodePayload(payload);
           })
           .on('broadcast', { event: 'chat_message' }, ({ payload }) => {
             callbacks.onChatMessage?.(payload);
@@ -292,6 +350,9 @@ export const sessionService = {
     return () => {
       if (channel) {
         channel.removeEventListener('message', handleMsg);
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorage);
       }
       if (sbSubscription && isSupabaseConfigured) {
         supabase.removeChannel(sbSubscription);

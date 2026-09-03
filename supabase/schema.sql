@@ -1,7 +1,8 @@
 -- ==============================================================================
--- CodeBuddy Production & Latest Realtime Database Migration (v2.5)
+-- CodeBuddy Production & Latest Realtime Database Migration (v2.5 - Idempotent)
 -- Features: Piston Remote GCC Execution, Multi-file Submissions, Live Classrooms,
 -- Realtime Presence & Sync, Pro Trial Fields, and Role-Based Access Control.
+-- Fully safe to run repeatedly on existing databases.
 -- ==============================================================================
 
 -- 1. EXTENSIONS
@@ -28,7 +29,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Idempotent column migrations for profiles
+-- Safe column additions for existing profiles table
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_pro BOOLEAN DEFAULT false;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS pro_plan TEXT DEFAULT NULL;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMPTZ DEFAULT NULL;
@@ -40,7 +41,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFA
 
 -- 3. SESSIONS (LIVE CLASSROOM ROOMS) TABLE
 CREATE TABLE IF NOT EXISTS public.sessions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code VARCHAR(10) UNIQUE NOT NULL, -- e.g. 'CB-8821'
     pin VARCHAR(6) NOT NULL,          -- e.g. '5540'
     title TEXT NOT NULL DEFAULT 'Live Coding Classroom',
@@ -52,9 +53,15 @@ CREATE TABLE IF NOT EXISTS public.sessions (
     ended_at TIMESTAMPTZ
 );
 
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS pin VARCHAR(6) DEFAULT '0000';
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'c';
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS is_live BOOLEAN DEFAULT true;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS ended_at TIMESTAMPTZ;
+
 -- 4. SESSION PARTICIPANTS & PRESENCE TABLE
 CREATE TABLE IF NOT EXISTS public.session_participants (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID REFERENCES public.sessions(id) ON DELETE CASCADE,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('mentor', 'student', 'friend', 'viewer')),
@@ -64,6 +71,12 @@ CREATE TABLE IF NOT EXISTS public.session_participants (
     UNIQUE(session_id, user_id)
 );
 
+-- CRITICAL: Ensure columns exist on pre-existing session_participants before creating view!
+ALTER TABLE public.session_participants ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'student';
+ALTER TABLE public.session_participants ADD COLUMN IF NOT EXISTS joined_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.session_participants ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE public.session_participants ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ DEFAULT NOW();
+
 -- Backward compatibility view if legacy code queries session_students
 CREATE OR REPLACE VIEW public.session_students AS
   SELECT id, session_id, user_id, role, joined_at, is_active, last_seen_at
@@ -72,7 +85,7 @@ CREATE OR REPLACE VIEW public.session_students AS
 
 -- 5. SESSION FILES (LIVE CODE EDITOR FILES) TABLE
 CREATE TABLE IF NOT EXISTS public.session_files (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID REFERENCES public.sessions(id) ON DELETE CASCADE,
     name TEXT NOT NULL DEFAULT 'main.c',
     language TEXT NOT NULL DEFAULT 'c' CHECK (language IN ('html', 'c', 'javascript')),
@@ -81,9 +94,13 @@ CREATE TABLE IF NOT EXISTS public.session_files (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.session_files ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'c';
+ALTER TABLE public.session_files ADD COLUMN IF NOT EXISTS is_entrypoint BOOLEAN DEFAULT true;
+ALTER TABLE public.session_files ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 -- 6. SESSION MESSAGES & Q&A TABLE
 CREATE TABLE IF NOT EXISTS public.session_messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID REFERENCES public.sessions(id) ON DELETE CASCADE,
     sender_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     sender_name TEXT NOT NULL,
@@ -96,9 +113,16 @@ CREATE TABLE IF NOT EXISTS public.session_messages (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.session_messages ADD COLUMN IF NOT EXISTS sender_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.session_messages ADD COLUMN IF NOT EXISTS sender_role TEXT DEFAULT 'student';
+ALTER TABLE public.session_messages ADD COLUMN IF NOT EXISTS sender_avatar TEXT;
+ALTER TABLE public.session_messages ADD COLUMN IF NOT EXISTS message_type TEXT DEFAULT 'chat';
+ALTER TABLE public.session_messages ADD COLUMN IF NOT EXISTS is_highlighted BOOLEAN DEFAULT false;
+ALTER TABLE public.session_messages ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES public.session_messages(id) ON DELETE SET NULL;
+
 -- 7. SESSION NOTES (MARKDOWN SYNC) TABLE
 CREATE TABLE IF NOT EXISTS public.session_notes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID REFERENCES public.sessions(id) ON DELETE CASCADE,
     author_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     title TEXT NOT NULL DEFAULT 'Classroom Notes',
@@ -110,7 +134,7 @@ CREATE TABLE IF NOT EXISTS public.session_notes (
 
 -- 8. PISTON CODE SUBMISSIONS & EXECUTION AUDIT LOG
 CREATE TABLE IF NOT EXISTS public.code_submissions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     room_code VARCHAR(10) DEFAULT NULL,
     language TEXT NOT NULL DEFAULT 'c',
@@ -130,9 +154,13 @@ CREATE TABLE IF NOT EXISTS public.code_submissions (
 -- Idempotent column additions for code_submissions
 ALTER TABLE public.code_submissions ADD COLUMN IF NOT EXISTS room_code VARCHAR(10) DEFAULT NULL;
 ALTER TABLE public.code_submissions ADD COLUMN IF NOT EXISTS companion_files JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.code_submissions ADD COLUMN IF NOT EXISTS stdin_input TEXT;
+ALTER TABLE public.code_submissions ADD COLUMN IF NOT EXISTS stdout_output TEXT;
+ALTER TABLE public.code_submissions ADD COLUMN IF NOT EXISTS stderr_output TEXT;
 ALTER TABLE public.code_submissions ADD COLUMN IF NOT EXISTS exit_code INTEGER DEFAULT 0;
 ALTER TABLE public.code_submissions ADD COLUMN IF NOT EXISTS engine TEXT DEFAULT 'piston-gcc-10.2';
 ALTER TABLE public.code_submissions ADD COLUMN IF NOT EXISTS compiler_version TEXT DEFAULT '10.2.0';
+ALTER TABLE public.code_submissions ADD COLUMN IF NOT EXISTS execution_time_ms INTEGER DEFAULT 0;
 
 -- 9. SHARED CODE ACCESS TABLE
 CREATE TABLE IF NOT EXISTS public.shared_access (
@@ -321,15 +349,47 @@ CREATE POLICY "Users can manage shared access"
   USING (auth.uid() = owner_id);
 
 -- ==============================================================================
--- ENABLE SUPABASE REALTIME REPLICATION FOR LIVE CLASSROOMS
+-- ENABLE SUPABASE REALTIME REPLICATION (SAFE & IDEMPOTENT)
 -- ==============================================================================
-BEGIN;
-  DROP PUBLICATION IF EXISTS supabase_realtime;
-  CREATE PUBLICATION supabase_realtime FOR TABLE 
-    public.sessions, 
-    public.session_files, 
-    public.session_messages, 
-    public.session_participants,
-    public.session_notes,
-    public.code_submissions;
-COMMIT;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.sessions;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.session_files;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.session_messages;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.session_participants;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.session_notes;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.code_submissions;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

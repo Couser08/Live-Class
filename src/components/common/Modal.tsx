@@ -64,7 +64,7 @@ export const Modal: React.FC<ModalProps> = ({
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className={cn(
-              'relative w-full bg-white dark:bg-[#111726] rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800 p-6 z-10 overflow-hidden text-slate-900 dark:text-slate-100',
+              'relative w-full bg-white dark:bg-[#111622] rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-slate-100 dark:border-slate-800/80 p-6 sm:p-7 z-10 overflow-hidden text-slate-900 dark:text-slate-100',
               maxWidthClasses[maxWidth]
             )}
           >

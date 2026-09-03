@@ -234,3 +234,45 @@ BEGIN;
     public.session_participants,
     public.session_notes;
 COMMIT;
+
+-- ==============================================================================
+-- CODE SUBMISSIONS & PISTON EXECUTION HISTORY
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.code_submissions (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users NOT NULL,
+  language text DEFAULT 'c',
+  source_code text NOT NULL,
+  stdin_input text,
+  stdout_output text,
+  stderr_output text,
+  status text CHECK (status IN ('success', 'compile_error', 'runtime_error', 'network_error')),
+  execution_time_ms integer,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.shared_access (
+  owner_id uuid REFERENCES auth.users,
+  viewer_id uuid REFERENCES auth.users,
+  PRIMARY KEY (owner_id, viewer_id)
+);
+
+ALTER TABLE public.code_submissions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own or shared submissions"
+  ON public.code_submissions FOR SELECT
+  USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM public.shared_access
+      WHERE owner_id = public.code_submissions.user_id
+      AND viewer_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can insert own submissions"
+  ON public.code_submissions FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_code_submissions_user_id ON public.code_submissions(user_id);
+

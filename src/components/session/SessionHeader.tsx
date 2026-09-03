@@ -19,6 +19,8 @@ import { useUIStore } from '../../stores/uiStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useAuthStore, isMentorEmail } from '../../stores/authStore';
 import { useClipboard } from '../../hooks/useClipboard';
+import { sessionService } from '../../services/sessionService';
+import { cn } from '../../lib/utils';
 
 export const SessionHeader: React.FC = () => {
   const { addToast, openNewSessionModal } = useUIStore();
@@ -31,6 +33,9 @@ export const SessionHeader: React.FC = () => {
     userRoleInSession,
     activeSessionsList,
     selectSession,
+    connectedStudents,
+    addConnectedStudent,
+    setConnectedStudents,
   } = useSessionStore();
   const { copy, hasCopied } = useClipboard();
 
@@ -39,6 +44,38 @@ export const SessionHeader: React.FC = () => {
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+
+  // Sync and listen for students reaching the room in real time
+  React.useEffect(() => {
+    if (!currentSession?.code) return;
+
+    // Load initially reached students from local cache
+    const initialList = sessionService.getConnectedStudents(currentSession.code);
+    if (initialList.length > 0) {
+      setConnectedStudents(initialList);
+    }
+
+    // If current user is a student, announce reach to mentor
+    const activeUser = authUser || currentUser;
+    if (!isMentor && activeUser) {
+      sessionService.broadcastStudentReached(currentSession.code, activeUser);
+    }
+
+    const unsubscribe = sessionService.subscribeToRoom(currentSession.code, {
+      onStudentReached: (student) => {
+        addConnectedStudent(student);
+        if (isMentor) {
+          addToast({
+            type: 'success',
+            title: 'Student Reached Live!',
+            description: `${student.name} is now connected live to this classroom.`,
+          });
+        }
+      },
+    });
+
+    return unsubscribe;
+  }, [currentSession?.code, isMentor]);
 
   // Timer Logic
   const [seconds, setSeconds] = useState(1455);
@@ -117,6 +154,45 @@ export const SessionHeader: React.FC = () => {
                 </span>
               )}
 
+              {/* Student Reached Live Indication for Mentor */}
+              {isMentor && (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-bold border transition-all',
+                    connectedStudents.length > 0
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 shadow-2xs'
+                      : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                  )}
+                  title={
+                    connectedStudents.length > 0
+                      ? `Active connected learners: ${connectedStudents.map((s) => s.name).join(', ')}`
+                      : 'Waiting for student to join with room code & PIN'
+                  }
+                >
+                  <span
+                    className={cn(
+                      'w-2 h-2 rounded-full shrink-0',
+                      connectedStudents.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
+                    )}
+                  />
+                  <span>
+                    {connectedStudents.length > 0
+                      ? `Reached: ${connectedStudents[0].name}${
+                          connectedStudents.length > 1 ? ` (+${connectedStudents.length - 1})` : ''
+                        } (Live)`
+                      : 'Waiting for student to reach...'}
+                  </span>
+                </span>
+              )}
+
+              {/* Connected to Mentor Indication for Student */}
+              {!isMentor && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Reached Mentor: {currentSession?.mentor?.name || 'Rahul Sharma'} (Live)</span>
+                </span>
+              )}
+
               {(authUser?.isPro || currentUser?.isPro) && (
                 <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-black bg-gradient-to-r from-amber-500 via-pink-500 to-indigo-600 text-white shadow-2xs">
                   <Sparkles className="w-3 h-3 text-amber-200" />
@@ -129,7 +205,7 @@ export const SessionHeader: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer shadow-2xs"
                   title="Switch between active classrooms"
                 >
                   <LayoutGrid className="w-3 h-3" />
@@ -138,7 +214,7 @@ export const SessionHeader: React.FC = () => {
                 </button>
 
                 {isSwitcherOpen && (
-                  <div className="absolute top-[110%] left-0 w-64 bg-white dark:bg-[#111726] border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 p-2 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="absolute top-[115%] left-0 w-64 bg-white dark:bg-[#111622] border border-slate-100 dark:border-slate-800/80 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] z-50 p-2 animate-in fade-in zoom-in-95 duration-100">
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">
                       Active Classrooms
                     </div>

@@ -111,24 +111,27 @@ export const LanguagesPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-7 pb-10">
+    <div className="space-y-6 pb-12 animate-in fade-in duration-150 max-w-[1400px] mx-auto">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Languages
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/60 text-[11px] font-bold text-[#4F46E5] dark:text-indigo-400 mb-2">
+            <span>Core Languages • Interactive Execution</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Languages & Workspaces
           </h1>
-          <p className="text-xs sm:text-sm font-medium text-slate-500 mt-0.5">
-            Choose a language to teach and learn together.
+          <p className="text-xs sm:text-sm font-normal text-slate-500 dark:text-slate-400 mt-1">
+            Select a programming language to broadcast live or experiment in your personal sandbox.
           </p>
         </div>
 
         <button
           onClick={() => setIsHowItWorksOpen(true)}
-          className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs sm:text-sm font-semibold rounded-2xl px-4 py-2.5 shadow-2xs transition-colors cursor-pointer self-start sm:self-auto"
+          className="inline-flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-semibold rounded-xl px-4 py-2.5 shadow-2xs transition-colors cursor-pointer self-start sm:self-auto"
         >
-          <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center">
-            <Play className="w-2 h-2 fill-slate-600 text-slate-600 ml-0.5" />
+          <div className="w-4 h-4 rounded-full bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center">
+            <Play className="w-2 h-2 fill-[#4F46E5] text-[#4F46E5] ml-0.5" />
           </div>
           <span>How it works?</span>
         </button>
@@ -139,7 +142,7 @@ export const LanguagesPage: React.FC = () => {
         {languages.map((lang) => (
           <Card
             key={lang.id}
-            className="p-6 flex flex-col justify-between space-y-6 hover:shadow-lg transition-all duration-200 border-slate-150"
+            className="p-6 sm:p-7 flex flex-col justify-between space-y-6 hover:shadow-[0_12px_32px_-4px_rgba(79,70,229,0.08)] transition-all duration-200"
           >
             <div className="space-y-5">
               {/* Icon & Title */}
@@ -150,30 +153,30 @@ export const LanguagesPage: React.FC = () => {
                     <h3 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                       {lang.title}
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed font-normal">
                       {lang.description}
                     </p>
                   </div>
                 </div>
                 {lang.isActive && (
-                  <Badge variant="live" pulse={false} className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
+                  <Badge variant="live" pulse={false}>
                     Active
                   </Badge>
                 )}
               </div>
 
               {/* Stats Counters Grid */}
-              <div className="grid grid-cols-3 gap-2 bg-slate-50/70 dark:bg-slate-800/70 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/80 text-center">
+              <div className="grid grid-cols-3 gap-2 bg-slate-50/80 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/80 text-center">
                 <div>
-                  <div className="text-[11px] text-slate-400 dark:text-slate-400 font-medium">Sessions</div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold">Sessions</div>
                   <div className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">{lang.stats.sessions}</div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-slate-400 dark:text-slate-400 font-medium">Notes</div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold">Notes</div>
                   <div className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">{lang.stats.notes}</div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-slate-400 dark:text-slate-400 font-medium">Questions</div>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold">Questions</div>
                   <div className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">{lang.stats.questions}</div>
                 </div>
               </div>
@@ -183,17 +186,17 @@ export const LanguagesPage: React.FC = () => {
             <div className="space-y-3 pt-2">
               <Button
                 onClick={() => handleStartTeaching(lang.id)}
-                variant={lang.buttonVariant}
+                variant="primary"
                 size="md"
                 fullWidth
-                className="rounded-2xl py-3 text-xs font-bold shadow-xs"
+                className="rounded-xl py-3 text-xs font-bold"
               >
                 Start Teaching
               </Button>
 
               <button
                 onClick={() => setSelectedTopicsLang(lang.title)}
-                className="w-full text-center text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                className="w-full text-center text-xs font-bold text-[#4F46E5] dark:text-indigo-400 hover:underline transition-colors cursor-pointer flex items-center justify-center gap-1"
               >
                 <span>View Topics</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -257,13 +260,16 @@ export const LanguagesPage: React.FC = () => {
         </Card>
 
         {/* Switch Language Card (4 cols) */}
-        <Card className="xl:col-span-4 p-6 bg-[#F5F6FE] dark:bg-indigo-950/40 border-[#E8EAFF] dark:border-indigo-900/60 flex flex-col justify-between space-y-3">
-          <div className="space-y-1.5">
-            <h4 className="font-extrabold text-sm text-[#5551FF] dark:text-indigo-400 tracking-tight">
-              Switch Language
+        <Card className="xl:col-span-4 p-6 sm:p-7 flex flex-col justify-between space-y-4 bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/50 dark:from-indigo-950/40 dark:via-[#111622] dark:to-purple-950/30 border border-indigo-100 dark:border-indigo-900/60">
+          <div className="space-y-2">
+            <div className="w-8 h-8 rounded-xl bg-[#4F46E5] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+              ⌘
+            </div>
+            <h4 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight">
+              Switch Languages
             </h4>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-              You can switch the active language anytime during a session.
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+              Switch between HTML, C, and JavaScript dynamically in the live workspace.
             </p>
           </div>
 
@@ -277,9 +283,9 @@ export const LanguagesPage: React.FC = () => {
                   description: 'Choose any language tab at top of the live editor.',
                 });
               }}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#5551FF] dark:text-indigo-400 hover:text-[#433CE2] dark:hover:text-indigo-300 transition-colors cursor-pointer group"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4F46E5] dark:text-indigo-400 hover:underline transition-colors cursor-pointer group"
             >
-              <span>Learn More</span>
+              <span>Open Classroom Workspace</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>

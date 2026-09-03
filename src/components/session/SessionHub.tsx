@@ -31,19 +31,19 @@ export const SessionHub: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-12 w-full animate-in fade-in duration-200">
+    <div className="space-y-6 pb-12 w-full animate-in fade-in duration-150 max-w-[1400px] mx-auto">
       {/* Hub Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-800 to-[#111726] border border-indigo-700/40 p-6 sm:p-8 text-white shadow-xl shadow-indigo-950/30">
+      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-[#111622] border border-slate-100 dark:border-slate-800/80 p-6 sm:p-8 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)]">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-bold text-indigo-200">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+          <div className="space-y-3 max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/60 text-xs font-bold text-[#4F46E5] dark:text-indigo-400">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               <span>Live Classrooms Hub</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               Interactive Coding Classrooms
             </h1>
-            <p className="text-xs sm:text-sm text-indigo-100/85 leading-relaxed font-medium">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
               Select any active classroom below to resume live broadcasting or enter as a student. You can create multiple sessions and switch between them anytime.
             </p>
           </div>
@@ -55,7 +55,7 @@ export const SessionHub: React.FC = () => {
                 variant="primary"
                 size="md"
                 icon={<Plus className="w-4 h-4" />}
-                className="rounded-2xl px-5 py-3 font-bold shadow-lg shadow-indigo-600/30 bg-white text-indigo-700 hover:bg-indigo-50 border-0"
+                className="rounded-xl px-5 py-3 font-bold"
               >
                 Create Classroom
               </Button>
@@ -65,7 +65,7 @@ export const SessionHub: React.FC = () => {
               variant="outline"
               size="md"
               icon={<KeyRound className="w-4 h-4" />}
-              className="rounded-2xl px-5 py-3 font-bold border-white/30 text-white hover:bg-white/10"
+              className="rounded-xl px-5 py-3 font-bold"
             >
               Join with PIN
             </Button>
@@ -75,7 +75,7 @@ export const SessionHub: React.FC = () => {
 
       {/* Language Filter Tabs */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80">
+        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80">
           <button
             onClick={() => setLangFilter('all')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -125,15 +125,15 @@ export const SessionHub: React.FC = () => {
 
       {/* Classrooms Grid or Empty State */}
       {filteredSessions.length === 0 ? (
-        <Card className="p-12 text-center space-y-4 border-dashed border-slate-300 dark:border-slate-800">
-          <div className="w-16 h-16 mx-auto rounded-3xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100 dark:border-indigo-900/60 shadow-sm">
+        <Card className="p-12 text-center space-y-4 border-dashed border-slate-200 dark:border-slate-800">
+          <div className="w-16 h-16 mx-auto rounded-3xl bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 flex items-center justify-center border border-indigo-100 dark:border-indigo-900/60 shadow-xs">
             <Radio className="w-8 h-8 opacity-80" />
           </div>
           <div className="space-y-1 max-w-sm mx-auto">
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
               No Classrooms Running
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
               {isMentor
                 ? 'You do not have any active live classrooms right now. Click below to start teaching.'
                 : 'No live classrooms currently active. Ask your mentor for a room code or PIN.'}
@@ -146,7 +146,7 @@ export const SessionHub: React.FC = () => {
                 variant="primary"
                 size="sm"
                 icon={<Plus className="w-4 h-4" />}
-                className="rounded-xl px-4 py-2.5 font-bold"
+                className="rounded-xl px-5 py-2.5 font-bold"
               >
                 Create Classroom
               </Button>
@@ -156,7 +156,7 @@ export const SessionHub: React.FC = () => {
                 variant="primary"
                 size="sm"
                 icon={<KeyRound className="w-4 h-4" />}
-                className="rounded-xl px-4 py-2.5 font-bold"
+                className="rounded-xl px-5 py-2.5 font-bold"
               >
                 Join Classroom
               </Button>
@@ -164,16 +164,16 @@ export const SessionHub: React.FC = () => {
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredSessions.map((session) => (
             <Card
               key={session.id}
-              className="p-5 flex flex-col justify-between space-y-5 hover:shadow-xl transition-all duration-200 border-slate-200/90 dark:border-slate-800 group"
+              className="p-6 sm:p-7 flex flex-col justify-between space-y-5 hover:shadow-[0_12px_32px_-4px_rgba(79,70,229,0.08)] transition-all duration-200 group"
             >
               <div className="space-y-3.5">
                 {/* Header: Language & Live status */}
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800/80">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/60">
                     {session.language}
                   </span>
                   <Badge variant="live" pulse>
@@ -183,22 +183,22 @@ export const SessionHub: React.FC = () => {
 
                 {/* Title & Description */}
                 <div>
-                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
+                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight group-hover:text-[#4F46E5] dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
                     {session.title}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 font-medium leading-relaxed">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 font-normal leading-relaxed">
                     {session.description || `Interactive ${session.language.toUpperCase()} classroom broadcast`}
                   </p>
                 </div>
 
                 {/* Room Credentials Pills */}
-                <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                <div className="grid grid-cols-2 gap-2 bg-slate-50/80 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/80 text-xs">
                   <div>
-                    <span className="text-[10px] text-slate-400 font-medium block">Room Code</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white">{session.code}</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Room Code</span>
+                    <span className="font-mono font-bold text-[#4F46E5] dark:text-indigo-400">{session.code}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 font-medium block">PIN</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">PIN</span>
                     <span className="font-mono font-bold text-slate-900 dark:text-white">{session.pin}</span>
                   </div>
                 </div>
@@ -219,17 +219,17 @@ export const SessionHub: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action Button */}
-              <div className="pt-2">
+              {/* Enter Button */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
                 <Button
                   onClick={() => handleSelectRoom(session)}
                   variant="primary"
                   size="md"
                   fullWidth
-                  className="rounded-xl py-2.5 text-xs font-bold flex items-center justify-center gap-1.5"
+                  className="rounded-xl py-2.5 text-xs font-bold"
+                  icon={<ArrowRight className="w-4 h-4" />}
                 >
-                  <span>{isMentor ? 'Resume Teaching' : 'Enter Classroom'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  Enter Classroom
                 </Button>
               </div>
             </Card>

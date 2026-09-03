@@ -82,21 +82,24 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 animate-in fade-in duration-150 max-w-[1400px] mx-auto">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/60 text-[11px] font-bold text-[#4F46E5] dark:text-indigo-400 mb-2">
+            <span>Preferences • Account & Theme Controls</span>
+          </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Settings
+            Settings & Preferences
           </h1>
-          <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-            Manage your preferences and account settings.
+          <p className="text-xs sm:text-sm font-normal text-slate-500 dark:text-slate-400 mt-1">
+            Manage your teaching environment, editor formatting, and profile details.
           </p>
         </div>
 
         {/* Profile Pill */}
         <div className="flex items-center gap-3 self-start sm:self-auto">
-          <div className="flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl px-3 py-1.5 shadow-2xs">
+          <div className="flex items-center gap-2.5 bg-white dark:bg-[#111622] border border-slate-100 dark:border-slate-800/80 rounded-2xl px-3.5 py-2 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)]">
             <Avatar
               src={currentUser.avatarUrl}
               name={currentUser.name}
@@ -105,7 +108,9 @@ export const SettingsPage: React.FC = () => {
             />
             <div className="text-left">
               <div className="text-xs font-bold text-slate-900 dark:text-white">{currentUser.name}</div>
-              <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Mentor</div>
+              <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                {currentUser.role === 'mentor' ? 'Senior Mentor' : 'Student Learner'}
+              </div>
             </div>
           </div>
         </div>
@@ -114,9 +119,9 @@ export const SettingsPage: React.FC = () => {
       {/* 3-Column Settings Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* 1. Left Tabs Sidebar (3 cols) */}
-        <Card className="lg:col-span-3 p-3 space-y-1">
-          <div className="px-3 py-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            Settings
+        <Card className="lg:col-span-3 p-3.5 space-y-1">
+          <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Navigation
           </div>
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -129,11 +134,11 @@ export const SettingsPage: React.FC = () => {
                 className={cn(
                   'w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-left',
                   isActive
-                    ? 'bg-[#EEF0FF] dark:bg-indigo-950/70 text-[#5551FF] dark:text-indigo-300 shadow-2xs'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/70 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/60 shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 )}
               >
-                <Icon className={cn('w-4 h-4', isActive ? 'text-[#5551FF] dark:text-indigo-400' : 'text-slate-400')} />
+                <Icon className={cn('w-4 h-4', isActive ? 'text-[#4F46E5] dark:text-indigo-400' : 'text-slate-400')} />
                 <span>{tab.label}</span>
               </button>
             );

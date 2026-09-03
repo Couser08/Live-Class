@@ -124,15 +124,18 @@ export const MyNotesPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-12 w-full animate-in fade-in duration-200">
+    <div className="space-y-6 pb-12 w-full animate-in fade-in duration-150 max-w-[1400px] mx-auto">
       {/* Header Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/60 text-[11px] font-bold text-[#4F46E5] dark:text-indigo-400 mb-2">
+            <span>Knowledge Base • Markdown Synchronized</span>
+          </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             My Notes
           </h1>
-          <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-            All your important notes in one place.
+          <p className="text-xs sm:text-sm font-normal text-slate-500 dark:text-slate-400 mt-1">
+            Access, edit, and export your classroom code notes and cheat sheets.
           </p>
         </div>
 
@@ -145,14 +148,14 @@ export const MyNotesPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search notes..."
-              className="w-full text-xs pl-9.5 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-2xs"
+              className="w-full text-xs pl-9.5 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111622] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-2xs"
             />
           </div>
 
           <select
             value={languageFilter}
             onChange={(e) => setLanguageFilter(e.target.value as any)}
-            className="text-xs px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs cursor-pointer"
+            className="text-xs px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111622] font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs cursor-pointer"
           >
             <option value="all">All Languages</option>
             <option value="html">HTML</option>

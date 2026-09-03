@@ -15,6 +15,7 @@ interface SessionState {
   isFollowingMentor: boolean;
   isSandboxMode: boolean;
   mentorCursorPos: { line: number; col: number };
+  connectedStudents: UserProfile[];
 
   createSession: (title: string, language: SupportedLanguage, mentorUser?: UserProfile) => RoomSession;
   joinSession: (
@@ -31,6 +32,8 @@ interface SessionState {
   setFollowingMentor: (val: boolean) => void;
   setMentorCursor: (pos: { line: number; col: number }) => void;
   loadSessions: () => Promise<void>;
+  setConnectedStudents: (students: UserProfile[]) => void;
+  addConnectedStudent: (student: UserProfile) => void;
 }
 
 // Default guest user is strictly a student learner, NOT mentor!
@@ -100,6 +103,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   isFollowingMentor: !(sessionMentorMatches || initialIsMentor),
   isSandboxMode: false,
   mentorCursorPos: { line: 1, col: 1 },
+  connectedStudents: [],
   metrics: {
     sessionsCompleted: 0,
     teachingTimeHours: 0,
@@ -321,5 +325,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   setMentorCursor: (pos: { line: number; col: number }) => {
     set({ mentorCursorPos: pos });
+  },
+
+  setConnectedStudents: (students: UserProfile[]) => {
+    set({ connectedStudents: students });
+  },
+
+  addConnectedStudent: (student: UserProfile) => {
+    set((state) => {
+      if (state.connectedStudents.some((s) => s.id === student.id || s.email === student.email)) {
+        return state;
+      }
+      return { connectedStudents: [...state.connectedStudents, student] };
+    });
   },
 }));

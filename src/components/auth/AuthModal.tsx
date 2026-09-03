@@ -3,11 +3,11 @@ import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { useAuthStore, MENTOR_EMAIL } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
-import { Mail, Lock, User, ShieldCheck, GraduationCap, Sparkles } from 'lucide-react';
+import { Mail, Lock, User } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const AuthModal: React.FC = () => {
-  const { isAuthModalOpen, closeAuthModal, authModalMode, openAuthModal, signIn, signUp, demoLogin, isLoading } = useAuthStore();
+  const { isAuthModalOpen, closeAuthModal, authModalMode, openAuthModal, signIn, signUp, isLoading, user } = useAuthStore();
   const { addToast } = useUIStore();
 
   const [name, setName] = useState('');
@@ -15,6 +15,19 @@ export const AuthModal: React.FC = () => {
   const [password, setPassword] = useState('');
 
   const isSignUp = authModalMode === 'signup';
+  const isNewUser = !user;
+
+  const handleClose = () => {
+    if (isNewUser) {
+      addToast({
+        type: 'info',
+        title: 'Account Required',
+        description: 'Please sign in or create an account to enter CodeBuddy classrooms.',
+      });
+      return;
+    }
+    closeAuthModal();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,59 +84,18 @@ export const AuthModal: React.FC = () => {
     }
   };
 
-  const handleDemo = (role: 'mentor' | 'student') => {
-    demoLogin(role);
-    addToast({
-      type: 'success',
-      title: role === 'mentor' ? 'Logged in as Mentor' : 'Logged in as Student',
-      description: role === 'mentor' ? `Using ${MENTOR_EMAIL}` : 'Using student@codebuddy.app',
-    });
-  };
-
   return (
     <Modal
       isOpen={isAuthModalOpen}
-      onClose={closeAuthModal}
+      onClose={handleClose}
       title={isSignUp ? 'Create your Account' : 'Welcome back'}
-      description="Connect to CodeBuddy Live Classrooms as a Mentor or Student"
+      description={
+        isNewUser
+          ? 'Please create an account or sign in to enter CodeBuddy Live Classrooms'
+          : 'Connect to CodeBuddy Live Classrooms as a Mentor or Student'
+      }
     >
       <div className="space-y-4 pt-2">
-        {/* Quick 1-Click Demo Login Bar */}
-        <div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-indigo-500" />
-              <span>Instant 1-Click Demo Logins</span>
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleDemo('mentor')}
-              className="flex items-center justify-center gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600 text-indigo-700 dark:text-indigo-300 text-xs font-bold shadow-2xs transition-all cursor-pointer hover:scale-[1.01]"
-            >
-              <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <div className="text-left leading-tight truncate">
-                <div>Mentor Mode</div>
-                <div className="text-[9px] font-normal text-slate-400 truncate">Rahul (Broadcast)</div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleDemo('student')}
-              className="flex items-center justify-center gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 dark:hover:border-emerald-600 text-emerald-700 dark:text-emerald-300 text-xs font-bold shadow-2xs transition-all cursor-pointer hover:scale-[1.01]"
-            >
-              <GraduationCap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <div className="text-left leading-tight truncate">
-                <div>Student Mode</div>
-                <div className="text-[9px] font-normal text-slate-400 truncate">Aarav (Follower)</div>
-              </div>
-            </button>
-          </div>
-        </div>
-
         {/* Mode Switch Tabs */}
         <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
           <button
@@ -204,23 +176,64 @@ export const AuthModal: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={closeAuthModal}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={isLoading}
-              className="px-5 font-bold"
-            >
-              {isLoading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
-            </Button>
+          <div className="pt-2">
+            {!isNewUser ? (
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClose}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isLoading}
+                  className="px-5 font-bold"
+                >
+                  {isLoading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="submit"
+                size="md"
+                disabled={isLoading}
+                fullWidth
+                className="rounded-xl py-3 font-bold bg-[#4F46E5] hover:bg-[#4338CA] text-white shadow-md shadow-indigo-500/20"
+              >
+                {isLoading ? 'Please wait...' : isSignUp ? 'Create Student Account 🚀' : 'Sign In to Classroom'}
+              </Button>
+            )}
+          </div>
+
+          {/* Quick toggle link */}
+          <div className="text-center pt-2 text-xs text-slate-500 dark:text-slate-400">
+            {isSignUp ? (
+              <span>
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('signin')}
+                  className="font-bold text-[#4F46E5] dark:text-indigo-400 hover:underline cursor-pointer"
+                >
+                  Sign In
+                </button>
+              </span>
+            ) : (
+              <span>
+                New to CodeBuddy?{' '}
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('signup')}
+                  className="font-bold text-[#4F46E5] dark:text-indigo-400 hover:underline cursor-pointer"
+                >
+                  Create Account
+                </button>
+              </span>
+            )}
           </div>
         </form>
       </div>

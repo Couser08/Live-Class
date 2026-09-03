@@ -70,19 +70,31 @@ export function executeCCode(
     // Remove function forward declarations / prototypes ending with semicolon
     jsCode = jsCode.replace(/\b(?:int|float|double|char|long|short|void|bool)\s+[a-zA-Z_]\w*\s*\([^;{}]*\)\s*;/g, '');
 
-    // Remove C type casts: (int)x, (float)y
-    jsCode = jsCode.replace(/\(\s*(?:int|float|double|char|long|short|void\s*\*?)\s*\)/g, '');
+    // Remove C type casts: (int)x, (float)y, (void*)ptr
+    jsCode = jsCode.replace(/\(\s*(?:int|float|double|char|long|short|void)\s*\*?\s*\)/g, '');
 
     // Replace sizeof(arr) / sizeof(...) with arr.length (handles bracketed indices like data[0])
     jsCode = jsCode.replace(/sizeof\s*\(\s*(\w+)\s*\)\s*\/\s*sizeof\s*\([^;,\n]+\)/g, '$1.length');
     jsCode = jsCode.replace(/sizeof\s*\(\s*(\w+)\s*\)/g, '($1.length || 4)');
     jsCode = jsCode.replace(/sizeof\s*\([^;,\n]+\)/g, '4');
 
-    // Replace array declarations:
-    // e.g. int data[] = {64, 34, 25, 12, 22, 11, 90};
-    // e.g. int arr[10];
+    // Handle pointer declarations: int *ptr = &score; or int* ptr = &score;
     jsCode = jsCode.replace(
-      /\b(?:int|float|double|char|long|short|void|bool)\s+([a-zA-Z_]\w*)\s*\[\s*\]\s*=\s*\{([^}]*)\}\s*;/g,
+      /\b(?:int|float|double|char|long|short|void)\s*\*+\s*([a-zA-Z_]\w*)\s*=\s*&?([a-zA-Z_]\w*)\s*;/g,
+      'let $1 = $2;'
+    );
+    jsCode = jsCode.replace(
+      /\b(?:int|float|double|char|long|short|void)\s*\*+\s*([a-zA-Z_]\w*)\s*;/g,
+      'let $1 = null;'
+    );
+
+    // Dereferenced pointer assignments: *ptr = 50; -> ptr = 50;
+    jsCode = jsCode.replace(/\*([a-zA-Z_]\w*)\s*=/g, '$1 =');
+
+    // Replace array declarations with or without fixed size:
+    // e.g. int data[] = {64, 34}; or int data[10] = {64, 34};
+    jsCode = jsCode.replace(
+      /\b(?:int|float|double|char|long|short|void|bool)\s+([a-zA-Z_]\w*)\s*\[\s*\d*\s*\]\s*=\s*\{([^}]*)\}\s*;/g,
       'let $1 = [$2];'
     );
     jsCode = jsCode.replace(
@@ -92,7 +104,6 @@ export function executeCCode(
 
     // Replace function declarations:
     // e.g. void bubbleSort(int arr[], int n) {
-    // e.g. void printArray(int arr[], int size) {
     // e.g. int add(int a, int b) {
     jsCode = jsCode.replace(
       /\b(?:int|float|double|char|long|short|void|bool)\s+([a-zA-Z_]\w*)\s*\(([^)]*)\)\s*\{/g,
@@ -104,7 +115,7 @@ export function executeCCode(
             if (!trimmed || trimmed === 'void') return '';
             // Remove pointer symbols and array brackets from param name
             const tokens = trimmed.split(/\s+/);
-            const paramName = tokens[tokens.length - 1].replace(/[\[\]\*]/g, '');
+            const paramName = tokens[tokens.length - 1].replace(/[\[\]\*&]/g, '');
             return paramName;
           })
           .filter(Boolean)
@@ -127,6 +138,9 @@ export function executeCCode(
       /\b(?:int|float|double|char|long|short|bool)\s+([a-zA-Z_]\w*)\s*=/g,
       'let $1 ='
     );
+
+    // Strip unary address-of operator in function calls: scanf("%d", &n) -> scanf("%d", n)
+    jsCode = jsCode.replace(/,\s*&([a-zA-Z_]\w*)/g, ', $1');
 
     // Standard printf implementation
     const customPrintf = (fmt: string, ...args: any[]) => {
@@ -158,11 +172,26 @@ export function executeCCode(
         if (type === 'c') {
           return String(val).charAt(0);
         }
+        if (type === 'p') {
+          return '0x7ffd' + (Math.abs(Number(val) || 42000) % 65535).toString(16).padStart(4, '0');
+        }
         return String(val ?? '');
       });
 
       stdoutBuffer += text;
     };
+
+    // Standard scanf simulation for classroom code
+    const customScanf = (_fmt: string, ..._args: any[]) => {
+      return 1;
+    };
+
+    // Standard math library helpers
+    const pow = Math.pow;
+    const sqrt = Math.sqrt;
+    const abs = Math.abs;
+    const floor = Math.floor;
+    const ceil = Math.ceil;
 
     // Construct sandboxed execution wrapper
     const runnerScript = `
@@ -175,8 +204,8 @@ export function executeCCode(
 
     // Execute within sandbox
     // eslint-disable-next-line no-new-func
-    const executor = new Function('printf', runnerScript);
-    executor(customPrintf);
+    const executor = new Function('printf', 'scanf', 'pow', 'sqrt', 'abs', 'floor', 'ceil', runnerScript);
+    executor(customPrintf, customScanf, pow, sqrt, abs, floor, ceil);
 
     const duration = Math.round(performance.now() - startTime);
 
@@ -188,13 +217,27 @@ export function executeCCode(
     };
   } catch (err: any) {
     const duration = Math.round(performance.now() - startTime);
+    let rawMsg = err.message || 'Syntax error or runtime exception';
+
+    // Map raw JS V8 syntax exceptions into realistic GCC compiler diagnostics
+    let gccError = rawMsg;
+    if (rawMsg.includes("Unexpected token '%'")) {
+      gccError = "error: expected expression before '%' token\n  --> check modulo operands (e.g. 'a % b') or unclosed printf format string";
+    } else if (rawMsg.includes("Unexpected token '&'")) {
+      gccError = "error: lvalue required as unary '&' operand";
+    } else if (rawMsg.includes("Unexpected token ';'")) {
+      gccError = "error: expected expression before ';' token";
+    } else if (rawMsg.includes("Unexpected identifier")) {
+      gccError = `error: ${rawMsg.replace('Unexpected identifier', 'unknown identifier or missing type declaration')}`;
+    }
+
     return {
       stdout: '',
       exitCode: 1,
       executionTimeMs: Math.max(10, duration),
       hasErrors: true,
       errors: [
-        `main.c: compilation / runtime error:\n${err.message || 'Syntax error or runtime exception'}`,
+        `main.c: compilation / runtime error:\n${gccError}`,
       ],
     };
   }

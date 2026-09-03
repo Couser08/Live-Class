@@ -115,8 +115,8 @@ export const Sidebar: React.FC = () => {
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 cursor-pointer',
                   isSidebarCollapsed ? 'justify-center px-2' : 'justify-start',
                   isActive
-                    ? 'bg-accent-light text-accent-primary font-semibold shadow-xs'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/70'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 font-bold border border-indigo-100 dark:border-indigo-900/60 shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 font-medium'
                 )}
               >
                 <Icon

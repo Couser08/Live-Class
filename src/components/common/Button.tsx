@@ -30,15 +30,15 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const variantStyles = {
-    primary: 'accent-gradient-btn text-white shadow-md shadow-indigo-500/20 hover:shadow-lg hover:brightness-105',
-    secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200/80',
-    outline: 'border border-slate-200 text-slate-700 hover:bg-slate-50',
-    ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-    glass: 'bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20',
-    'soft-purple': 'bg-accent-light text-accent-primary hover:opacity-90 font-semibold',
-    peach: 'bg-[#FFF3EC] text-[#E8590C] hover:bg-[#FFE8D9] font-semibold',
-    cyan: 'bg-[#EBF8FF] text-[#0284C7] hover:bg-[#E0F2FE] font-semibold',
-    amber: 'bg-[#FEFCE8] text-[#CA8A04] hover:bg-[#FEF9C3] font-semibold',
+    primary: 'bg-[#4F46E5] hover:bg-[#4338CA] text-white font-bold shadow-md shadow-indigo-500/20 active:scale-[0.98] border-0',
+    secondary: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-700 font-semibold',
+    outline: 'bg-white dark:bg-slate-800/90 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold shadow-2xs',
+    ghost: 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white',
+    glass: 'bg-white/10 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 dark:border-slate-700/50 text-white hover:bg-white/20',
+    'soft-purple': 'bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 font-bold border border-indigo-100 dark:border-indigo-900/40',
+    peach: 'bg-[#FFF3EC] dark:bg-orange-950/40 text-[#E8590C] dark:text-orange-400 hover:bg-[#FFE8D9] dark:hover:bg-orange-900/40 font-bold border border-orange-100 dark:border-orange-900/40',
+    cyan: 'bg-[#EBF8FF] dark:bg-sky-950/40 text-[#0284C7] dark:text-sky-400 hover:bg-[#E0F2FE] dark:hover:bg-sky-900/40 font-bold border border-sky-100 dark:border-sky-900/40',
+    amber: 'bg-[#FEFCE8] dark:bg-amber-950/40 text-[#CA8A04] dark:text-amber-400 hover:bg-[#FEF9C3] dark:hover:bg-amber-900/40 font-bold border border-amber-100 dark:border-amber-900/40',
   };
 
   return (

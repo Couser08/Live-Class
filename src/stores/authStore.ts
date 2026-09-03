@@ -83,11 +83,13 @@ const getStoredUser = (): UserProfile | null => {
   return null;
 };
 
+const initialStoredUser = getStoredUser();
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: getStoredUser(),
+  user: initialStoredUser,
   isLoading: false,
-  isAuthModalOpen: false,
-  authModalMode: 'signin',
+  isAuthModalOpen: !initialStoredUser,
+  authModalMode: initialStoredUser ? 'signin' : 'signup',
   isProfileModalOpen: false,
 
   openAuthModal: (mode = 'signin') => {
@@ -183,7 +185,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               id: data.user.id,
               name,
               email: normalizedEmail,
-              role: role === 'mentor' ? 'mentor' : 'friend',
+              role: role === 'mentor' ? 'mentor' : 'student',
+              status_text: role === 'mentor' ? 'Senior Peer Mentor' : 'Student Learner',
               is_online: true,
             });
           } catch {}
@@ -290,13 +293,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } catch {}
     }
     localStorage.removeItem('codebuddy_auth_user');
-    set({ user: null, isAuthModalOpen: false });
+    set({ user: null, isAuthModalOpen: true, authModalMode: 'signin' });
   },
 
-  demoLogin: (role: 'mentor' | 'student') => {
-    const profile = role === 'mentor' ? DEFAULT_MENTOR : DEFAULT_STUDENT;
-    localStorage.setItem('codebuddy_auth_user', JSON.stringify(profile));
-    set({ user: profile, isAuthModalOpen: false });
+  demoLogin: (_role: 'mentor' | 'student') => {
+    // 1-Click demo logins removed per user instruction
   },
 
   initializeAuth: async () => {

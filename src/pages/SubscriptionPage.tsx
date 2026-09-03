@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
-import { Card } from '../components/common/Card';
-import { Button } from '../components/common/Button';
 import { useAuthStore, isMentorEmail } from '../stores/authStore';
 import { useUIStore } from '../stores/uiStore';
-import { Sparkles, Check, Gift, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Gift,
+  PlayCircle,
+  Users,
+  Code2,
+  Trophy,
+  ShieldCheck,
+  Check,
+  RotateCcw,
+  GraduationCap,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
+import { SubscriptionHeroGraphic } from '../components/subscription/SubscriptionHeroGraphic';
 
 export const SubscriptionPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -11,7 +22,7 @@ export const SubscriptionPage: React.FC = () => {
   const isMentor = isMentorEmail(user?.email) || user?.role === 'mentor';
   const isPro = isMentor || Boolean(user?.isPro);
 
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   const faqs = [
     {
@@ -33,252 +44,357 @@ export const SubscriptionPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-8 pb-16 max-w-6xl mx-auto animate-in fade-in duration-200">
-      {/* Hero Banner */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-900 border border-indigo-700/40 p-8 sm:p-12 text-white shadow-2xl">
-        <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-extrabold text-amber-300">
-            <Gift className="w-4 h-4 animate-bounce" />
-            <span>Beta Launch Early Adopter Reward</span>
+    <div className="space-y-8 pb-16 max-w-[1400px] mx-auto animate-in fade-in duration-150">
+      {/* 1. HERO SECTION BANNER */}
+      <div className="bg-white dark:bg-[#111622] rounded-3xl border border-slate-100 dark:border-slate-800/80 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] p-8 sm:p-12 relative overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+          {/* Left Column: Offer Copy & CTAs */}
+          <div className="lg:col-span-7 space-y-5">
+            {/* Pill Eyebrow */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 shadow-2xs">
+              <Gift className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span className="text-xs font-semibold text-[#4F46E5] dark:text-indigo-400">
+                Beta Launch • Early Adopter Reward
+              </span>
+            </div>
+
+            {/* Main Headline */}
+            <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-[1.12]">
+              CodeBuddy Pro is{' '}
+              <span className="text-[#4F46E5] dark:text-[#6366F1]">100% Free</span> for 12 Months.
+            </h1>
+
+            {/* Description Subtitle */}
+            <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base leading-relaxed max-w-xl font-normal">
+              Unlock interactive code replays, 1-on-1 mentor hand raise queue, luxury IDE themes, and
+              milestone snapshots. No credit card required.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3.5 pt-2">
+              <button
+                type="button"
+                onClick={openClaimRewardModal}
+                className="bg-[#4F46E5] hover:bg-[#4338CA] text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-md shadow-indigo-500/20 flex items-center gap-2 transition-all cursor-pointer hover:shadow-lg active:scale-[0.98]"
+              >
+                <Users className="w-4 h-4 text-indigo-200" />
+                <span>Claim 12-Month Free Trial</span>
+                <Gift className="w-4 h-4 text-amber-300" />
+              </button>
+
+              <button
+                type="button"
+                onClick={openTourModal}
+                className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/70 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-5 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-2xs transition-all cursor-pointer active:scale-[0.98]"
+              >
+                <PlayCircle className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                <span>Take Product Tour</span>
+              </button>
+            </div>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-            CodeBuddy Pro is <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-pink-300 to-indigo-300">100% Free</span> for 12 Months.
-          </h1>
+          {/* Right Column: 3D Isometric Illustration */}
+          <div className="lg:col-span-5 flex items-center justify-center">
+            <SubscriptionHeroGraphic />
+          </div>
+        </div>
 
-          <p className="text-sm sm:text-base text-indigo-100/90 leading-relaxed font-medium">
-            Unlock Interactive Code Replays, 1-on-1 Mentor Hand Raise Queue, Luxury IDE Themes, and Milestone Snapshots. No credit card required.
-          </p>
+        {/* Lower Feature Badges Strip (4 Features in a Row) */}
+        <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* Badge 1: Interactive Learning */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-[#4F46E5] dark:text-indigo-400 shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">Interactive Learning</h4>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">Learn by doing in real-time</p>
+            </div>
+          </div>
 
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            {isPro ? (
-              <div className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-extrabold text-sm">
-                <Check className="w-4 h-4" />
-                <span>⭐ CodeBuddy Pro Active on Your Account</span>
-              </div>
-            ) : (
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={openClaimRewardModal}
-                className="rounded-2xl px-6 py-3.5 font-black shadow-xl shadow-indigo-600/30 bg-gradient-to-r from-amber-400 via-pink-500 to-indigo-600 text-white hover:brightness-105 transition-all text-sm"
-                icon={<Sparkles className="w-4 h-4 text-white" />}
-              >
-                Claim 12-Month Free Trial (₹0) 🎁
-              </Button>
-            )}
+          {/* Badge 2: Pro IDE Experience */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-[#4F46E5] dark:text-indigo-400 shrink-0">
+              <Code2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">Pro IDE Experience</h4>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">Premium themes & tools</p>
+            </div>
+          </div>
 
-            <button
-              type="button"
-              onClick={openTourModal}
-              className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer border border-white/10"
-            >
-              Take Product Tour
-            </button>
+          {/* Badge 3: Milestone Snapshots */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-[#4F46E5] dark:text-indigo-400 shrink-0">
+              <Trophy className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">Milestone Snapshots</h4>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">Track, save & revisit progress</p>
+            </div>
+          </div>
+
+          {/* Badge 4: No Payment Needed */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-[#4F46E5] dark:text-indigo-400 shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">No Payment Needed</h4>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">100% free for 12 months</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Pricing Matrix */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* 2. THREE-TIER PRICING MATRIX */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         {/* Tier 1: Free Starter */}
-        <Card className="rounded-3xl p-6 flex flex-col justify-between border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-md">
-          <div className="space-y-4">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Community Tier</span>
-              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">Free Starter</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                For casual learners exploring public live coding sessions.
-              </p>
+        <div className="bg-white dark:bg-[#111622] rounded-3xl border border-slate-100 dark:border-slate-800/80 p-7 flex flex-col justify-between shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_-4px_rgba(79,70,229,0.08)] transition-all duration-200">
+          <div>
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#4F46E5] dark:text-indigo-400">
+                  COMMUNITY TIER
+                </span>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1.5">Free Starter</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  For casual learners exploring public live coding sessions.
+                </p>
+              </div>
+
+              {/* Icon */}
+              <div className="w-11 h-11 rounded-2xl bg-[#EEF2FF] dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-[#4F46E5] dark:text-indigo-400 shrink-0">
+                <Users className="w-5 h-5" />
+              </div>
             </div>
 
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-slate-900 dark:text-white">₹0</span>
-              <span className="text-xs text-slate-400">/ forever free</span>
+            {/* Price */}
+            <div className="flex items-baseline gap-1.5 mt-5 pb-5 border-b border-slate-100 dark:border-slate-800/80">
+              <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">₹0</span>
+              <span className="text-xs text-slate-400 font-medium">/ forever free</span>
             </div>
 
-            <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs">
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+            {/* Feature Checkmarks */}
+            <div className="space-y-3.5 py-6 text-xs text-slate-600 dark:text-slate-300 font-medium">
+              <div className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                 <span>Join public live classrooms</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                <span>CodeMirror 6 single-canvas editor</span>
+              <div className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                <span>CodeMirror & single-canvas editor</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+              <div className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                 <span>Basic C, HTML & JS compilation</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+              <div className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                 <span>Public classroom chat</span>
               </div>
             </div>
           </div>
 
-          <div className="pt-6">
-            <Button
-              variant="outline"
-              size="md"
+          {/* Button */}
+          <div className="pt-2">
+            <button
+              type="button"
               disabled
-              className="w-full rounded-xl font-bold opacity-60"
+              className="w-full py-3.5 rounded-xl font-bold text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 text-center cursor-default"
             >
               Current Base Tier
-            </Button>
+            </button>
           </div>
-        </Card>
+        </div>
 
-        {/* Tier 2: Pro Student (Featured) */}
-        <Card className="rounded-3xl p-6 flex flex-col justify-between relative overflow-hidden border-2 border-indigo-500 dark:border-indigo-500 bg-white dark:bg-slate-900 shadow-xl shadow-indigo-500/10">
-          <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-600 to-purple-600 text-white text-[10px] font-black uppercase tracking-wider py-1 px-4 rounded-bl-xl shadow-sm">
-            12 Mo Free Reward 🎁
+        {/* Tier 2: Pro Student (Featured Card) */}
+        <div className="bg-white dark:bg-[#111726] rounded-3xl border-2 border-[#5046E5] dark:border-[#6366F1] p-7 flex flex-col justify-between shadow-xl shadow-indigo-500/10 dark:shadow-indigo-950/30 relative overflow-hidden">
+          {/* Top-Right Badge: 12 MO FREE REWARD */}
+          <div className="absolute top-0 right-0 bg-[#5046E5] text-white text-[11px] font-black uppercase tracking-wider py-1.5 px-4 rounded-bl-2xl shadow-xs flex items-center gap-1.5">
+            <span>12 MO FREE REWARD</span>
+            <Gift className="w-3.5 h-3.5 text-amber-300 shrink-0" />
           </div>
 
-          <div className="space-y-4">
+          <div>
+            {/* Header */}
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-500">Early Adopter Pass</span>
-              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-1.5">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#4F46E5] dark:text-indigo-400">
+                EARLY ADOPTER PASS
+              </span>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1.5 flex items-center gap-2">
                 <span>Pro Student</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
-                  ⭐ PRO
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200/80 dark:border-amber-700/50">
+                  <span>☆</span>
+                  <span>PRO</span>
                 </span>
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                 Full power for BCA, MCA, Engineering & Bootcamp students.
               </p>
             </div>
 
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900 dark:text-white">₹0</span>
-              <span className="text-xs line-through text-slate-400">₹499/mo</span>
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">100% Free for 1 Year</span>
+            {/* Price */}
+            <div className="flex items-center gap-2.5 mt-5 pb-5 border-b border-slate-100 dark:border-slate-800/80">
+              <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">₹0</span>
+              <span className="text-xs text-slate-400 line-through font-medium">₹499/mo</span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
+                100% Free for 1 Year
+              </span>
             </div>
 
-            <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs">
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold">
-                <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>🎬 Interactive Code Replay Player</span>
+            {/* Pro Features */}
+            <div className="space-y-3.5 py-6 text-xs text-slate-700 dark:text-slate-200 font-medium">
+              <div className="flex items-center gap-2.5">
+                <span className="w-4 h-4 rounded-full bg-indigo-50 dark:bg-indigo-950/80 flex items-center justify-center text-[#4F46E5] dark:text-indigo-400 shrink-0 text-[10px] font-bold">
+                  ✓
+                </span>
+                <span className="font-semibold">Interactive Code Replay Player</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold">
-                <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>✋ Priority 1-on-1 Mentor Hand Raise</span>
+              <div className="flex items-center gap-2.5">
+                <span className="w-4 h-4 rounded-full bg-indigo-50 dark:bg-indigo-950/80 flex items-center justify-center text-[#4F46E5] dark:text-indigo-400 shrink-0 text-[10px] font-bold">
+                  ✓
+                </span>
+                <span className="font-semibold">Priority 1-on-1 Mentor Hand Raise</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold">
-                <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>🎨 All Luxury IDE Themes & Fonts</span>
+              <div className="flex items-center gap-2.5">
+                <span className="text-sm shrink-0">🎨</span>
+                <span className="font-semibold">All Luxury IDE Themes & Fonts</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold">
-                <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>⏱️ Milestone Snapshots & 1-Click Restore</span>
+              <div className="flex items-center gap-2.5">
+                <span className="text-sm shrink-0">⏱️</span>
+                <span className="font-semibold">Milestone Snapshots & 1-Click Restore</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold">
-                <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>⭐ Verified PRO Learner Badge</span>
+              <div className="flex items-center gap-2.5">
+                <span className="text-sm shrink-0">⭐</span>
+                <span className="font-semibold">Verified PRO Learner Badge</span>
               </div>
             </div>
           </div>
 
-          <div className="pt-6">
-            <Button
-              variant="primary"
-              size="md"
+          {/* Button */}
+          <div className="pt-2">
+            <button
+              type="button"
               onClick={openClaimRewardModal}
-              disabled={isPro}
-              className="w-full rounded-xl py-3 font-extrabold shadow-md bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="w-full py-3.5 rounded-xl font-extrabold text-sm text-white bg-[#5046E5] hover:bg-[#4338CA] shadow-md shadow-indigo-500/25 transition-all text-center flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
             >
-              {isPro ? 'Pro Active (12 Months Free)' : 'Claim 12-Month Free Trial 🚀'}
-            </Button>
+              <span>{isPro ? 'Pro Active (Claimed) 🚀' : 'Claim 12-Month Free Trial 🚀'}</span>
+            </button>
           </div>
-        </Card>
+        </div>
 
         {/* Tier 3: Mentor Pro */}
-        <Card className="rounded-3xl p-6 flex flex-col justify-between border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-md">
-          <div className="space-y-4">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-500">Educators & Mentors</span>
-              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">Mentor Pro</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                For peer mentors and instructors teaching live coding.
-              </p>
+        <div className="bg-white dark:bg-[#111622] rounded-3xl border border-slate-100 dark:border-slate-800/80 p-7 flex flex-col justify-between shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_-4px_rgba(79,70,229,0.08)] transition-all duration-200">
+          <div>
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  EDUCATORS & MENTORS
+                </span>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1.5">Mentor Pro</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  For peer mentors and instructors teaching live coding.
+                </p>
+              </div>
+
+              {/* Icon */}
+              <div className="w-11 h-11 rounded-2xl bg-[#ECFDF5] dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                <GraduationCap className="w-5 h-5" />
+              </div>
             </div>
 
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900 dark:text-white">₹0</span>
-              <span className="text-xs line-through text-slate-400">₹999/mo</span>
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">Free in Beta</span>
+            {/* Price */}
+            <div className="flex items-center gap-2.5 mt-5 pb-5 border-b border-slate-100 dark:border-slate-800/80">
+              <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">₹0</span>
+              <span className="text-xs text-slate-400 line-through font-medium">₹999/mo</span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Free in Beta</span>
             </div>
 
-            <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs">
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+            {/* Features */}
+            <div className="space-y-3.5 py-6 text-xs text-slate-600 dark:text-slate-300 font-medium">
+              <div className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                 <span>Unlimited live classrooms & rooms</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+              <div className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                 <span>Real-time code stream broadcasting</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+              <div className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                 <span>Interactive Markdown notes broadcaster</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+              <div className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                 <span>Student doubt inspection & takeover</span>
               </div>
             </div>
           </div>
 
-          <div className="pt-6">
-            <Button
-              variant="outline"
-              size="md"
+          {/* Button */}
+          <div className="pt-2">
+            <button
+              type="button"
               onClick={openClaimRewardModal}
-              className="w-full rounded-xl font-bold"
+              className="w-full py-3.5 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 text-center transition-colors cursor-pointer active:scale-[0.98]"
             >
               Get Mentor Access
-            </Button>
+            </button>
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* FAQ Accordion */}
-      <div className="space-y-4 pt-4">
-        <div className="text-center space-y-1">
-          <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
-            Frequently Asked Questions
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Everything you need to know about the 12-Month Pro Free Trial Reward.
-          </p>
+      {/* 3. BOTTOM TRUST BADGES FOOTER */}
+      <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 pt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-slate-400" />
+          <span>No credit card required</span>
         </div>
+        <span className="text-slate-300 dark:text-slate-700">•</span>
+        <div className="flex items-center gap-2">
+          <RotateCcw className="w-4 h-4 text-slate-400" />
+          <span>Cancel anytime</span>
+        </div>
+        <span className="text-slate-300 dark:text-slate-700">•</span>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-slate-400" />
+          <span>100% Free for 12 Months</span>
+        </div>
+      </div>
 
-        <div className="max-w-2xl mx-auto space-y-2.5">
-          {faqs.map((faq, idx) => (
-            <div
-              key={idx}
-              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4 transition-all"
-            >
-              <button
-                type="button"
-                onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
-                className="w-full flex items-center justify-between text-left font-bold text-xs text-slate-900 dark:text-white cursor-pointer"
-              >
-                <span>{faq.q}</span>
-                {expandedFaq === idx ? (
-                  <ChevronUp className="w-4 h-4 text-indigo-500 shrink-0" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+      {/* 4. EXPANDABLE FAQ ACCORDION */}
+      <div className="mt-12 bg-white dark:bg-[#111622] rounded-3xl border border-slate-100 dark:border-slate-800/80 p-8 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)]">
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+          Frequently Asked Questions
+        </h3>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+          {faqs.map((faq, index) => {
+            const isOpen = expandedFaq === index;
+            return (
+              <div key={index} className="py-4">
+                <button
+                  type="button"
+                  onClick={() => setExpandedFaq(isOpen ? null : index)}
+                  className="w-full flex items-center justify-between text-left text-sm font-semibold text-slate-800 dark:text-slate-200 hover:text-[#4F46E5] dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                >
+                  <span>{faq.q}</span>
+                  {isOpen ? (
+                    <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                  )}
+                </button>
+                {isOpen && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2.5 leading-relaxed pr-8 animate-in fade-in duration-150">
+                    {faq.a}
+                  </p>
                 )}
-              </button>
-
-              {expandedFaq === idx && (
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed border-t border-slate-100 dark:border-slate-800 pt-2 animate-in fade-in duration-100">
-                  {faq.a}
-                </p>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

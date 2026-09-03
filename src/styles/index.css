@@ -99,18 +99,41 @@
   html,
   body {
     font-family: var(--font-sans);
-    background-color: #F4F6FB;
-    color: #1E293B;
+    background-color: #F8FAFD;
+    color: #0F172A;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* High-Contrast Deep Slate / OLED Dark Theme */
+  /* High-Contrast Deep Slate / Luxury Dark Theme matching Home & Subscription */
   html.dark,
   html.dark body,
   html[data-theme="dark"],
   html[data-theme="dark"] body {
-    background-color: #090D16;
+    background-color: #0D1021;
     color: #F8FAFC;
   }
+}
+
+/* Surface & Shadow Tokens matching Home & Subscription Page */
+.shadow-soft {
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.04);
+}
+
+.shadow-soft-hover {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.shadow-soft-hover:hover {
+  box-shadow: 0 12px 32px -4px rgba(79, 70, 229, 0.08);
+  transform: translateY(-2px);
+}
+
+.shadow-glow-indigo {
+  box-shadow: 0 10px 30px -5px rgba(79, 70, 229, 0.25);
+}
+
+.shadow-glow-pro {
+  box-shadow: 0 20px 50px rgba(79, 70, 229, 0.18);
 }
 
 /* Custom scrollbar for editors and lists */

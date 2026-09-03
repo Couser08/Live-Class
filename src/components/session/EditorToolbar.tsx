@@ -44,8 +44,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onRefreshPreview }
           className={cn(
             'inline-flex items-center gap-1.5 min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer select-none active:scale-[0.98]',
             activeSessionTab === 'editor'
-              ? 'bg-accent-light text-accent-primary shadow-xs'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800'
+              ? 'bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 font-bold border border-indigo-100 dark:border-indigo-900/60 shadow-2xs'
+              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-2xs'
           )}
         >
           <Code2 className="w-3.5 h-3.5" />
@@ -60,8 +60,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onRefreshPreview }
             className={cn(
               'inline-flex items-center gap-1.5 min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer select-none active:scale-[0.98]',
               activeSessionTab === 'files'
-                ? 'bg-accent-light text-accent-primary shadow-xs'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800'
+                ? 'bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 font-bold border border-indigo-100 dark:border-indigo-900/60 shadow-2xs'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-2xs'
             )}
           >
             <Folder className="w-3.5 h-3.5" />
@@ -188,7 +188,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onRefreshPreview }
         <button
           type="button"
           onClick={handleRunClick}
-          className="inline-flex items-center gap-1.5 min-h-[38px] accent-gradient-btn text-white px-4 py-1.5 rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20 hover:shadow-lg hover:brightness-105 active:scale-95 transition-all cursor-pointer select-none"
+          className="inline-flex items-center gap-1.5 min-h-[38px] bg-[#4F46E5] hover:bg-[#4338CA] text-white px-4 py-1.5 rounded-xl text-xs font-bold shadow-md shadow-indigo-500/25 hover:shadow-lg active:scale-95 transition-all cursor-pointer select-none"
         >
           <Play className="w-3.5 h-3.5 fill-white" />
           <span>Run Code</span>
@@ -201,7 +201,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onRefreshPreview }
         <button
           type="button"
           onClick={onRefreshPreview}
-          className="min-w-[38px] min-h-[38px] rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer shadow-2xs active:scale-95"
+          className="min-w-[38px] min-h-[38px] rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer shadow-2xs active:scale-95"
           title="Reload preview"
         >
           <RotateCw className="w-3.5 h-3.5" />

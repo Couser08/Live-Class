@@ -57,27 +57,27 @@ export const UnderDevelopmentPage: React.FC<UnderDevelopmentPageProps> = ({ page
   const Icon = config.icon;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-7 pb-12">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12 animate-in fade-in duration-150">
       {/* Top Header */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => setActiveNavTab('home')}
-          className="w-9 h-9 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 flex items-center justify-center transition-colors cursor-pointer shadow-xs"
+          className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             {config.title}
           </h1>
-          <p className="text-xs sm:text-sm font-medium text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm font-normal text-slate-500 dark:text-slate-400 mt-1">
             {config.subtitle}
           </p>
         </div>
       </div>
 
       {/* Main Illustration Card */}
-      <Card className="p-8 sm:p-10 text-center space-y-6 relative overflow-hidden">
+      <Card className="p-8 sm:p-10 text-center space-y-6 relative overflow-hidden shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)]">
         {/* Glow effect */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -87,14 +87,14 @@ export const UnderDevelopmentPage: React.FC<UnderDevelopmentPageProps> = ({ page
         </div>
 
         <div className="space-y-2 max-w-lg mx-auto">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
-            <Sparkles className="w-3.5 h-3.5 fill-indigo-500" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/60">
+            <Sparkles className="w-3.5 h-3.5 fill-[#4F46E5]" />
             <span>Active Feature Development</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Coming Soon to CodeBuddy 🚀
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-medium">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
             We are crafting this module with high-performance real-time synchronization, export tools, and seamless mentor controls.
           </p>
         </div>
@@ -104,7 +104,7 @@ export const UnderDevelopmentPage: React.FC<UnderDevelopmentPageProps> = ({ page
           {config.features.map((feature, idx) => (
             <div
               key={idx}
-              className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 text-xs font-semibold text-slate-700"
+              className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/80 text-xs font-semibold text-slate-700 dark:text-slate-300"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
               <span>{feature}</span>
@@ -118,7 +118,7 @@ export const UnderDevelopmentPage: React.FC<UnderDevelopmentPageProps> = ({ page
             onClick={() => setActiveNavTab('home')}
             size="md"
             icon={<ArrowLeft className="w-4 h-4" />}
-            className="rounded-2xl px-6"
+            className="rounded-xl px-6"
           >
             Back to Home
           </Button>
@@ -127,8 +127,8 @@ export const UnderDevelopmentPage: React.FC<UnderDevelopmentPageProps> = ({ page
             variant="outline"
             size="md"
             onClick={() => setActiveNavTab('sessions')}
-            icon={<Rocket className="w-4 h-4 text-indigo-600" />}
-            className="rounded-2xl px-6 bg-white"
+            icon={<Rocket className="w-4 h-4 text-[#4F46E5] dark:text-indigo-400" />}
+            className="rounded-xl px-6"
           >
             Launch Live Classroom
           </Button>

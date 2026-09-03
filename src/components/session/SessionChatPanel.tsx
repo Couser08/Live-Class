@@ -113,7 +113,10 @@ export const SessionChatPanel: React.FC = () => {
     // Add locally
     setMessages((prev) => (prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]));
 
-    // Broadcast message cross-tab / supabase
+    // Persist to Supabase and local storage
+    sessionService.sendMessage(newMsg);
+
+    // Broadcast message cross-tab / supabase realtime
     if (currentSession?.code) {
       sessionService.broadcastMessage(currentSession.code, newMsg);
     }

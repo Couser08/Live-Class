@@ -70,6 +70,9 @@ export const App: React.FC = () => {
     const currentAuthUser = useAuthStore.getState().user;
     if (currentAuthUser) {
       useSessionStore.getState().setCurrentUser(currentAuthUser);
+    } else {
+      // New user: immediately open Sign Up & Login modal so every new visitor authenticates
+      useAuthStore.getState().openAuthModal('signup');
     }
 
     // Initialize Supabase Auth state listener

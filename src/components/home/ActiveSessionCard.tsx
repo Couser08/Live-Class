@@ -7,6 +7,7 @@ import { Users, Plus, ArrowRight } from 'lucide-react';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useUIStore } from '../../stores/uiStore';
 import { isMentorEmail } from '../../stores/authStore';
+import { sessionService } from '../../services/sessionService';
 
 export const ActiveSessionCard: React.FC = () => {
   const activeSession = useSessionStore((state) => state.activeSessionCardData);
@@ -62,12 +63,9 @@ export const ActiveSessionCard: React.FC = () => {
     });
   };
 
-  const learner = activeSession.activeLearners?.[0] || {
-    name: 'Student Learner',
-    isOnline: true,
-    statusText: 'Connected to live stream',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-  };
+  const connectedStudents = activeSession ? sessionService.getConnectedStudents(activeSession.code) : [];
+  const hasReachedStudent = connectedStudents.length > 0 || (activeSession?.activeLearners && activeSession.activeLearners.length > 0);
+  const learner = connectedStudents[0] || activeSession?.activeLearners?.[0];
 
   return (
     <Card className="p-6 flex flex-col justify-between space-y-4 bg-white dark:bg-[#111622] border-slate-100 dark:border-slate-800/80 rounded-3xl shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)]">
@@ -97,23 +95,32 @@ export const ActiveSessionCard: React.FC = () => {
         </div>
       </div>
 
-      {/* Peer Info */}
+      {/* Peer / Student Live Info */}
       <div className="flex items-center gap-2.5">
         <Avatar
-          src={isMentor ? learner.avatarUrl : activeSession.mentor?.avatarUrl}
-          name={isMentor ? learner.name : activeSession.mentor?.name || 'Mentor'}
-          isOnline={true}
+          src={isMentor ? learner?.avatarUrl : activeSession.mentor?.avatarUrl}
+          name={isMentor ? (learner?.name || 'Student') : (activeSession.mentor?.name || 'Mentor')}
+          isOnline={isMentor ? hasReachedStudent : true}
           size="sm"
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
-              {isMentor ? learner.name : activeSession.mentor?.name || 'Mentor'}
+              {isMentor
+                ? (hasReachedStudent && learner ? learner.name : 'No Student Yet')
+                : (activeSession.mentor?.name || 'Mentor')}
             </h4>
             {isMentor ? (
-              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                Student
-              </span>
+              hasReachedStudent ? (
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Reached (Live)</span>
+                </span>
+              ) : (
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                  Waiting...
+                </span>
+              )
             ) : (
               <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
                 Mentor
@@ -121,7 +128,9 @@ export const ActiveSessionCard: React.FC = () => {
             )}
           </div>
           <p className="text-[10px] text-slate-400 truncate">
-            {activeSession.title || 'Live Coding Session'}
+            {isMentor
+              ? (hasReachedStudent ? 'Student reached live stream' : 'Waiting for student to join room')
+              : (activeSession.title || 'Live Coding Session')}
           </p>
         </div>
       </div>

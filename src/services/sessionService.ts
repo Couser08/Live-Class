@@ -203,6 +203,10 @@ export const sessionService = {
       } catch {}
     }
 
+    if (role === 'student') {
+      this.broadcastStudentReached(code, user);
+    }
+
     return {
       success: true,
       session,
@@ -274,6 +278,45 @@ export const sessionService = {
   },
 
   /**
+   * Broadcast that a student has reached and joined the live classroom
+   */
+  broadcastStudentReached(roomCode: string, student: UserProfile) {
+    const clean = roomCode.trim().toUpperCase();
+    const channel = getBroadcastChannel(clean);
+    const payload = { user: student, timestamp: Date.now() };
+
+    if (channel) {
+      try { channel.postMessage({ type: 'STUDENT_REACHED', payload }); } catch {}
+    }
+
+    try {
+      localStorage.setItem(`cb_reached_${clean}`, JSON.stringify(payload));
+      const key = `cb_students_${clean}`;
+      const existing: UserProfile[] = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!existing.some((s) => s.id === student.id || s.email === student.email)) {
+        existing.push(student);
+        localStorage.setItem(key, JSON.stringify(existing));
+      }
+    } catch {}
+
+    if (isSupabaseConfigured) {
+      try {
+        supabase.channel(`room:${clean}`).send({ type: 'broadcast', event: 'student_reached', payload });
+      } catch {}
+    }
+  },
+
+  getConnectedStudents(roomCode: string): UserProfile[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(`cb_students_${roomCode.trim().toUpperCase()}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
    * Subscribe to real-time events for a room
    */
   subscribeToRoom(
@@ -282,6 +325,7 @@ export const sessionService = {
       onCodeUpdate?: (payload: RealtimeCodePayload) => void;
       onCodeStream?: (payload: RealtimeCodePayload) => void;
       onChatMessage?: (payload: ChatMessageItem) => void;
+      onStudentReached?: (student: UserProfile) => void;
     }
   ) {
     const cleanCode = roomCode.trim().toUpperCase();
@@ -302,6 +346,8 @@ export const sessionService = {
         handleCodePayload(data.payload);
       } else if (data.type === 'CHAT_MESSAGE' && data.payload) {
         callbacks.onChatMessage?.(data.payload);
+      } else if (data.type === 'STUDENT_REACHED' && data.payload?.user) {
+        callbacks.onStudentReached?.(data.payload.user);
       }
     };
 
@@ -325,6 +371,13 @@ export const sessionService = {
             callbacks.onChatMessage?.(parsed.message);
           }
         } catch {}
+      } else if (e.key === `cb_reached_${cleanCode}` && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed?.user) {
+            callbacks.onStudentReached?.(parsed.user);
+          }
+        } catch {}
       }
     };
 
@@ -342,6 +395,11 @@ export const sessionService = {
           })
           .on('broadcast', { event: 'chat_message' }, ({ payload }) => {
             callbacks.onChatMessage?.(payload);
+          })
+          .on('broadcast', { event: 'student_reached' }, ({ payload }) => {
+            if (payload?.user) {
+              callbacks.onStudentReached?.(payload.user);
+            }
           })
           .subscribe();
       } catch {}

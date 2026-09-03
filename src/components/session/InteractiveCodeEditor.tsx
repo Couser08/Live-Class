@@ -212,7 +212,7 @@ export const InteractiveCodeEditor: React.FC = () => {
   return (
     <div
       onKeyDown={handleContainerKeyDown}
-      className={cn("flex-1 rounded-2xl shadow-xl flex flex-col overflow-hidden relative border", themeClasses)}
+      className={cn("flex-1 rounded-3xl shadow-[0_4px_24px_-4px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden relative border", themeClasses)}
     >
       {/* Role State Banner */}
       {!isMentor && (

@@ -15,13 +15,13 @@ export const Badge: React.FC<BadgeProps> = ({
   ...props
 }) => {
   const variantStyles = {
-    live: 'bg-emerald-50 text-emerald-600 border-emerald-200/80',
-    online: 'bg-emerald-500 text-white',
-    purple: 'bg-indigo-50 text-indigo-600 border-indigo-200/60',
-    orange: 'bg-orange-50 text-orange-600 border-orange-200/60',
-    blue: 'bg-sky-50 text-sky-600 border-sky-200/60',
-    yellow: 'bg-amber-50 text-amber-700 border-amber-200/60',
-    gray: 'bg-slate-100 text-slate-600 border-slate-200/60',
+    live: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200/80 dark:border-emerald-800/60',
+    online: 'bg-emerald-500 text-white border-transparent',
+    purple: 'bg-indigo-50 dark:bg-indigo-950/60 text-[#4F46E5] dark:text-indigo-400 border-indigo-200/60 dark:border-indigo-800/60',
+    orange: 'bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 border-orange-200/60 dark:border-orange-800/60',
+    blue: 'bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border-sky-200/60 dark:border-sky-800/60',
+    yellow: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/60',
+    gray: 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200/60 dark:border-slate-700/60',
   };
 
   return (

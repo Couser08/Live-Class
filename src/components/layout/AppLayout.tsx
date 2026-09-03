@@ -13,7 +13,7 @@ interface AppLayoutProps {
 
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   return (
-    <div className="flex min-h-screen bg-[#F4F6FB] dark:bg-[#0B0D1B] text-slate-800 dark:text-slate-200 font-sans transition-colors duration-150">
+    <div className="flex min-h-screen bg-[#F8FAFD] dark:bg-[#0D1021] text-slate-800 dark:text-slate-200 font-sans transition-colors duration-150">
       {/* Collapsible / Responsive Sidebar */}
       <Sidebar />
 

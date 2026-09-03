@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, LogIn, PlayCircle, Zap } from 'lucide-react';
+import { Plus, LogIn, PlayCircle } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
+import { HeroCodeSlider } from './HeroCodeSlider';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore, isMentorEmail } from '../../stores/authStore';
 
@@ -70,74 +71,9 @@ export const HeroBanner: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Dual-Window Editor & Live Preview Showcase */}
+          {/* Right Interactive Code & Preview Slider Showcase */}
           <div className="lg:col-span-6 w-full flex items-center justify-center">
-            <div className="relative flex items-center w-full max-w-[500px]">
-              {/* Left Window: Code Editor */}
-              <div className="w-[55%] rounded-2xl bg-[#0F141F] border border-slate-800 shadow-xl overflow-hidden text-slate-300 z-10 flex flex-col shrink-0">
-                {/* Window Header */}
-                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800/80 bg-[#141A28]">
-                  <span className="text-[11px] font-mono text-slate-300 font-medium">index.html</span>
-                  <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-semibold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Live</span>
-                  </div>
-                </div>
-
-                {/* Code Snippet with Line Numbers */}
-                <div className="p-3 text-[11px] font-mono leading-snug space-y-0.5 select-none overflow-x-hidden">
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">1</span> &lt;<span className="text-indigo-400">!DOCTYPE</span> <span className="text-amber-300">html</span>&gt;</div>
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">2</span> &lt;<span className="text-indigo-400">html</span> <span className="text-amber-300">lang</span>=<span className="text-emerald-300">"en"</span>&gt;</div>
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">3</span> &lt;<span className="text-indigo-400">head</span>&gt;</div>
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">4</span>   &lt;<span className="text-indigo-400">meta</span> <span className="text-amber-300">charset</span>=<span className="text-emerald-300">"UTF-8"</span> /&gt;</div>
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">5</span>   &lt;<span className="text-indigo-400">title</span>&gt;Live Class Demo&lt;/<span className="text-indigo-400">title</span>&gt;</div>
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">6</span>   &lt;<span className="text-indigo-400">link</span> <span className="text-amber-300">rel</span>=<span className="text-emerald-300">"stylesheet"</span></div>
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">7</span>     <span className="text-amber-300">href</span>=<span className="text-emerald-300">"style.css"</span> /&gt;</div>
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">8</span> &lt;/<span className="text-indigo-400">head</span>&gt;</div>
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">9</span> &lt;<span className="text-indigo-400">body</span>&gt;</div>
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">10</span>  &lt;<span className="text-indigo-400">div</span> <span className="text-amber-300">class</span>=<span className="text-emerald-300">"card"</span>&gt;</div>
-                  <div className="text-slate-300 font-semibold bg-indigo-950/50 -mx-3 px-3"><span className="inline-block w-4 text-slate-500">11</span>    &lt;<span className="text-indigo-400">h1</span>&gt;Hello, World!&lt;/<span className="text-indigo-400">h1</span>&gt;</div>
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">12</span>    &lt;<span className="text-indigo-400">p</span>&gt;Learning HTML is fun 🚀&lt;/<span className="text-indigo-400">p</span>&gt;</div>
-                  <div className="text-slate-500"><span className="inline-block w-4 text-slate-600">13</span>  &lt;/<span className="text-indigo-400">div</span>&gt;</div>
-                </div>
-
-                {/* Footer status bar */}
-                <div className="flex items-center justify-between px-3 py-1 border-t border-slate-800/80 text-[9px] font-mono text-slate-500 bg-[#0C101A]">
-                  <span>Ln 11, Col 24</span>
-                  <span>HTML</span>
-                </div>
-              </div>
-
-              {/* Center Lightning Badge */}
-              <div className="absolute left-[55%] top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shadow-lg border-2 border-white dark:border-slate-800 pointer-events-none">
-                <Zap className="w-4 h-4 fill-white" />
-              </div>
-
-              {/* Right Window: Live Browser Preview */}
-              <div className="w-[50%] -ml-4 rounded-2xl bg-white dark:bg-[#161D2B] border border-slate-200/90 dark:border-slate-700 shadow-xl overflow-hidden flex flex-col z-0">
-                {/* Browser Controls Header */}
-                <div className="flex items-center justify-between pl-6 pr-3 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-[#131926]">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-rose-400" />
-                    <span className="w-2 h-2 rounded-full bg-amber-400" />
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  </div>
-                  <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 flex items-center gap-1">
-                    <span className="text-slate-400">+</span> Live Preview
-                  </span>
-                </div>
-
-                {/* Live Preview Rendered Body - padded so text is clearly visible */}
-                <div className="pl-8 pr-4 py-8 flex flex-col justify-center min-h-[190px] space-y-1.5">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">
-                    Hello, World!
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal whitespace-nowrap">
-                    Learning HTML is fun 🚀
-                  </p>
-                </div>
-              </div>
-            </div>
+            <HeroCodeSlider />
           </div>
         </div>
       </div>

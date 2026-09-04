@@ -223,6 +223,9 @@ export function executeCCode(
     // Dereferenced pointer assignments: *ptr = 50; -> ptr = 50;
     jsCode = jsCode.replace(/\*([a-zA-Z_]\w*)\s*=/g, '$1 =');
 
+    // Dereferenced pointer reads in expressions: printf("%d", *ptr), y = *ptr + 1, return *ptr
+    jsCode = jsCode.replace(/(^|[(\[=+\-!<>&|~%?,;:]|\breturn)\s*\*+([a-zA-Z_]\w*)/g, '$1 $2');
+
     // Replace array declarations with or without fixed size:
     // e.g. int data[] = {64, 34}; or int data[10] = {64, 34};
     jsCode = jsCode.replace(
@@ -351,18 +354,16 @@ export function executeCCode(
           throw new Error("Time Limit Exceeded: Loop iteration limit exceeded 100,000 steps (infinite loop detected)");
         }
       }
-      const print = typeof printf === 'function' ? printf : function() {};
-      const alert = function() {};
       ${guardedJsCode}
       if (typeof main === 'function') {
         main();
       }
     `;
 
-    // Execute within sandbox - explicitly shadow 'print' and 'window' so browser print dialog is never triggered
+    // Execute within sandbox - explicitly shadow 'print', 'alert', and 'window' so browser dialogs are never triggered
     // eslint-disable-next-line no-new-func
-    const executor = new Function('printf', 'print', 'scanf', 'pow', 'sqrt', 'abs', 'floor', 'ceil', 'window', runnerScript);
-    executor(customPrintf, customPrintf, customScanf, pow, sqrt, abs, floor, ceil, { print: customPrintf, alert: () => {} });
+    const executor = new Function('printf', 'print', 'alert', 'scanf', 'pow', 'sqrt', 'abs', 'floor', 'ceil', 'window', runnerScript);
+    executor(customPrintf, customPrintf, () => {}, customScanf, pow, sqrt, abs, floor, ceil, { print: customPrintf, alert: () => {} });
 
     const duration = Math.round(performance.now() - startTime);
 

@@ -11,6 +11,7 @@ import {
   LayoutGrid,
   ChevronDown,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
@@ -18,8 +19,12 @@ import { Modal } from '../common/Modal';
 import { useUIStore } from '../../stores/uiStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useAuthStore, isMentorEmail } from '../../stores/authStore';
+import { useChallengeStore } from '../../stores/challengeStore';
 import { useClipboard } from '../../hooks/useClipboard';
 import { sessionService } from '../../services/sessionService';
+import { CreateChallengeModal } from '../challenge/CreateChallengeModal';
+import { StudentChallengeModal } from '../challenge/StudentChallengeModal';
+import { MentorGradingModal } from '../challenge/MentorGradingModal';
 import { cn } from '../../lib/utils';
 
 export const SessionHeader: React.FC = () => {
@@ -45,7 +50,23 @@ export const SessionHeader: React.FC = () => {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
 
-  // Sync and listen for students reaching the room in real time
+  const {
+    activeChallenge,
+    submissions,
+    mySubmission,
+    setActiveChallenge,
+    setSubmissions,
+    addOrUpdateSubmission,
+    setMySubmission,
+    openCreateModal,
+    openGradingModal,
+    openStudentSandbox,
+    endChallengeLocal,
+  } = useChallengeStore();
+
+  const activeUser = authUser || currentUser;
+
+  // Sync and listen for students reaching the room and challenges in real time
   React.useEffect(() => {
     if (!currentSession?.code) return;
 
@@ -55,8 +76,19 @@ export const SessionHeader: React.FC = () => {
       setConnectedStudents(initialList);
     }
 
+    // Load active challenge and submissions
+    const existingChallenge = sessionService.getActiveChallenge(currentSession.code);
+    if (existingChallenge) {
+      setActiveChallenge(existingChallenge);
+    }
+    const existingSubs = sessionService.getChallengeSubmissions(currentSession.code);
+    if (existingSubs.length > 0) {
+      setSubmissions(existingSubs);
+      const mySub = existingSubs.find((s) => s.studentId === activeUser?.id);
+      if (mySub) setMySubmission(mySub);
+    }
+
     // If current user is a student, announce reach to mentor
-    const activeUser = authUser || currentUser;
     if (!isMentor && activeUser) {
       sessionService.broadcastStudentReached(currentSession.code, activeUser);
     }
@@ -75,10 +107,49 @@ export const SessionHeader: React.FC = () => {
       onPresenceSync: (students) => {
         setConnectedStudents(students);
       },
+      onChallengeLaunched: (challenge) => {
+        setActiveChallenge(challenge);
+        if (!isMentor) {
+          addToast({
+            type: 'info',
+            title: 'Live Challenge Launched! ⚡',
+            description: `Mentor pushed "${challenge.title}". Click Solve Live Challenge!`,
+          });
+        }
+      },
+      onChallengeSubmitted: (sub) => {
+        addOrUpdateSubmission(sub);
+        if (isMentor) {
+          addToast({
+            type: 'success',
+            title: 'Challenge Solution Received! 📥',
+            description: `${sub.studentName} submitted their code. Ready to grade.`,
+          });
+        }
+      },
+      onGradeReceived: (gradedSub) => {
+        addOrUpdateSubmission(gradedSub);
+        if (!isMentor && (gradedSub.studentId === activeUser?.id || gradedSub.studentName === activeUser?.name)) {
+          setMySubmission(gradedSub);
+          addToast({
+            type: 'success',
+            title: 'Your Solution Was Graded! 🌟',
+            description: `Awarded ${gradedSub.marks} marks. Click to view feedback!`,
+          });
+        }
+      },
+      onChallengeEnded: () => {
+        endChallengeLocal();
+        addToast({
+          type: 'info',
+          title: 'Challenge Concluded',
+          description: 'The live challenge has ended.',
+        });
+      },
     });
 
     return unsubscribe;
-  }, [currentSession?.code, isMentor]);
+  }, [currentSession?.code, isMentor, activeUser?.id]);
 
   // Synchronized Timer Logic based on real session start time
   const getElapsedSeconds = () => {
@@ -297,6 +368,18 @@ export const SessionHeader: React.FC = () => {
           {isMentor && (
             <>
               <Button
+                variant="primary"
+                size="sm"
+                onClick={() => (activeChallenge ? openGradingModal() : openCreateModal())}
+                icon={<Zap className="w-4 h-4 text-amber-300" />}
+                className="rounded-xl font-bold bg-[#4F46E5] hover:bg-[#4338CA] text-white shadow-md shadow-indigo-500/20"
+              >
+                {activeChallenge
+                  ? `Challenge Desk (${submissions.filter((s) => s.status === 'submitted').length} to grade)`
+                  : '⚡ Push Challenge'}
+              </Button>
+
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={() => openNewSessionModal()}
@@ -339,6 +422,22 @@ export const SessionHeader: React.FC = () => {
 
           {!isMentor && (
             <>
+              {activeChallenge && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={openStudentSandbox}
+                  icon={<Zap className="w-4 h-4 text-amber-300 animate-pulse" />}
+                  className="rounded-xl font-bold bg-gradient-to-r from-amber-500 to-indigo-600 text-white shadow-md shadow-amber-500/20"
+                >
+                  {mySubmission?.status === 'graded'
+                    ? `Challenge Graded (${mySubmission.marks}/${activeChallenge.totalMarks})`
+                    : mySubmission?.status === 'submitted'
+                    ? 'Challenge Submitted (Review)'
+                    : '⚡ Solve Live Challenge'}
+                </Button>
+              )}
+
               <Button
                 variant="outline"
                 size="sm"
@@ -472,6 +571,11 @@ export const SessionHeader: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Live Challenge & Sandbox Modals */}
+      <CreateChallengeModal />
+      <StudentChallengeModal />
+      <MentorGradingModal />
     </>
   );
 };

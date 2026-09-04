@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { SupportedLanguage, UserProfile } from '../types/session.types';
+import { LiveChallenge, ChallengeSubmission } from '../types/challenge.types';
 import { isMentorEmail } from '../stores/authStore';
 
 export interface SessionData {
@@ -45,6 +46,10 @@ export interface RoomCallbacks {
   onNotesStream?: (content: string) => void;
   onStudentReached?: (student: UserProfile) => void;
   onPresenceSync?: (students: UserProfile[]) => void;
+  onChallengeLaunched?: (challenge: LiveChallenge) => void;
+  onChallengeSubmitted?: (submission: ChallengeSubmission) => void;
+  onGradeReceived?: (submission: ChallengeSubmission) => void;
+  onChallengeEnded?: () => void;
 }
 
 // In-browser BroadcastChannel singleton cache for zero-latency cross-tab communication
@@ -219,6 +224,14 @@ export const sessionService = {
           entry.listeners.forEach((cb) => cb.onNotesStream?.(data.content));
         } else if (type === 'reached' && data?.user) {
           entry.listeners.forEach((cb) => cb.onStudentReached?.(data.user));
+        } else if (type === 'challenge_launched' && data) {
+          entry.listeners.forEach((cb) => cb.onChallengeLaunched?.(data));
+        } else if (type === 'challenge_submitted' && data) {
+          entry.listeners.forEach((cb) => cb.onChallengeSubmitted?.(data));
+        } else if (type === 'challenge_graded' && data) {
+          entry.listeners.forEach((cb) => cb.onGradeReceived?.(data));
+        } else if (type === 'challenge_ended') {
+          entry.listeners.forEach((cb) => cb.onChallengeEnded?.());
         }
       };
 
@@ -230,6 +243,10 @@ export const sessionService = {
           else if (e.data.type === 'CHAT_MESSAGE') handlePayload('chat', e.data.payload);
           else if (e.data.type === 'NOTES_STREAM') handlePayload('notes', e.data.payload);
           else if (e.data.type === 'STUDENT_REACHED') handlePayload('reached', e.data.payload);
+          else if (e.data.type === 'CHALLENGE_LAUNCHED') handlePayload('challenge_launched', e.data.payload);
+          else if (e.data.type === 'CHALLENGE_SUBMITTED') handlePayload('challenge_submitted', e.data.payload);
+          else if (e.data.type === 'CHALLENGE_GRADED') handlePayload('challenge_graded', e.data.payload);
+          else if (e.data.type === 'CHALLENGE_ENDED') handlePayload('challenge_ended', {});
         };
         broadcastChan.addEventListener('message', broadcastHandler);
       }
@@ -243,6 +260,10 @@ export const sessionService = {
             if (e.key === `cb_sync_${cleanCode}`) handlePayload('code', parsed?.payload);
             else if (e.key === `cb_chat_${cleanCode}`) handlePayload('chat', parsed?.message);
             else if (e.key === `cb_reached_${cleanCode}`) handlePayload('reached', parsed);
+            else if (e.key === `cb_challenge_${cleanCode}`) handlePayload('challenge_launched', parsed);
+            else if (e.key === `cb_sub_ping_${cleanCode}`) handlePayload('challenge_submitted', parsed?.submission);
+            else if (e.key === `cb_grade_ping_${cleanCode}`) handlePayload('challenge_graded', parsed?.submission);
+            else if (e.key === `cb_challenge_ended_${cleanCode}`) handlePayload('challenge_ended', {});
           } catch {}
         };
         window.addEventListener('storage', storageHandler);
@@ -259,6 +280,10 @@ export const sessionService = {
             .on('broadcast', { event: 'chat_message' }, ({ payload }) => handlePayload('chat', payload))
             .on('broadcast', { event: 'notes_stream' }, ({ payload }) => handlePayload('notes', payload))
             .on('broadcast', { event: 'student_reached' }, ({ payload }) => handlePayload('reached', payload))
+            .on('broadcast', { event: 'challenge_launched' }, ({ payload }) => handlePayload('challenge_launched', payload))
+            .on('broadcast', { event: 'challenge_submitted' }, ({ payload }) => handlePayload('challenge_submitted', payload))
+            .on('broadcast', { event: 'challenge_graded' }, ({ payload }) => handlePayload('challenge_graded', payload))
+            .on('broadcast', { event: 'challenge_ended' }, () => handlePayload('challenge_ended', {}))
             .on('presence', { event: 'sync' }, () => {
               const state = sb.presenceState();
               const students: UserProfile[] = [];
@@ -345,6 +370,85 @@ export const sessionService = {
     } catch {
       return [];
     }
+  },
+
+  broadcastChallenge(roomCode: string, challenge: LiveChallenge) {
+    const clean = roomCode.trim().toUpperCase();
+    const entry = this.getOrCreateManagedRoom(clean);
+    const channel = getBroadcastChannel(clean);
+    if (channel) try { channel.postMessage({ type: 'CHALLENGE_LAUNCHED', payload: challenge }); } catch {}
+    try { localStorage.setItem(`cb_challenge_${clean}`, JSON.stringify(challenge)); } catch {}
+    if (entry.sbChannel) {
+      try { entry.sbChannel.send({ type: 'broadcast', event: 'challenge_launched', payload: challenge }); } catch {}
+    }
+  },
+
+  broadcastSubmission(roomCode: string, submission: ChallengeSubmission) {
+    const clean = roomCode.trim().toUpperCase();
+    const entry = this.getOrCreateManagedRoom(clean);
+    const channel = getBroadcastChannel(clean);
+    if (channel) try { channel.postMessage({ type: 'CHALLENGE_SUBMITTED', payload: submission }); } catch {}
+    try {
+      const key = `cb_submissions_${clean}`;
+      const existing: ChallengeSubmission[] = JSON.parse(localStorage.getItem(key) || '[]');
+      const filtered = existing.filter((s) => s.id !== submission.id && s.studentId !== submission.studentId);
+      filtered.push(submission);
+      localStorage.setItem(key, JSON.stringify(filtered));
+      localStorage.setItem(`cb_sub_ping_${clean}`, JSON.stringify({ submission, t: Date.now() }));
+    } catch {}
+    if (entry.sbChannel) {
+      try { entry.sbChannel.send({ type: 'broadcast', event: 'challenge_submitted', payload: submission }); } catch {}
+    }
+  },
+
+  broadcastGrade(roomCode: string, submission: ChallengeSubmission) {
+    const clean = roomCode.trim().toUpperCase();
+    const entry = this.getOrCreateManagedRoom(clean);
+    const channel = getBroadcastChannel(clean);
+    if (channel) try { channel.postMessage({ type: 'CHALLENGE_GRADED', payload: submission }); } catch {}
+    try {
+      const key = `cb_submissions_${clean}`;
+      const existing: ChallengeSubmission[] = JSON.parse(localStorage.getItem(key) || '[]');
+      const updated = existing.map((s) => (s.id === submission.id ? submission : s));
+      localStorage.setItem(key, JSON.stringify(updated));
+      localStorage.setItem(`cb_grade_ping_${clean}`, JSON.stringify({ submission, t: Date.now() }));
+    } catch {}
+    if (entry.sbChannel) {
+      try { entry.sbChannel.send({ type: 'broadcast', event: 'challenge_graded', payload: submission }); } catch {}
+    }
+  },
+
+  broadcastEndChallenge(roomCode: string) {
+    const clean = roomCode.trim().toUpperCase();
+    const entry = this.getOrCreateManagedRoom(clean);
+    const channel = getBroadcastChannel(clean);
+    if (channel) try { channel.postMessage({ type: 'CHALLENGE_ENDED', payload: {} }); } catch {}
+    try {
+      localStorage.removeItem(`cb_challenge_${clean}`);
+      localStorage.removeItem(`cb_submissions_${clean}`);
+      localStorage.setItem(`cb_challenge_ended_${clean}`, String(Date.now()));
+    } catch {}
+    if (entry.sbChannel) {
+      try { entry.sbChannel.send({ type: 'broadcast', event: 'challenge_ended', payload: {} }); } catch {}
+    }
+  },
+
+  getActiveChallenge(roomCode: string): LiveChallenge | null {
+    const clean = roomCode.trim().toUpperCase();
+    try {
+      const raw = localStorage.getItem(`cb_challenge_${clean}`);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  },
+
+  getChallengeSubmissions(roomCode: string): ChallengeSubmission[] {
+    const clean = roomCode.trim().toUpperCase();
+    try {
+      const raw = localStorage.getItem(`cb_submissions_${clean}`);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [];
   },
 
   /**

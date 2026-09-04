@@ -9,6 +9,7 @@ import {
   AlertCircle,
   X,
   Play,
+  Layers,
 } from 'lucide-react';
 import { useCodeStore } from '../../stores/codeStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -19,6 +20,7 @@ import {
   PistonExecutionResult,
   CodeSubmissionRecord,
 } from '../../services/pistonService';
+import { CMemoryVisualizer } from './CMemoryVisualizer';
 
 interface SessionLivePreviewProps {
   refreshKey?: number;
@@ -33,6 +35,7 @@ export const SessionLivePreview: React.FC<SessionLivePreviewProps> = ({ refreshK
   const [stdin, setStdin] = useState('');
   const [isStdinOpen, setIsStdinOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [cViewMode, setCViewMode] = useState<'console' | 'memory'>('console');
   const [historyList, setHistoryList] = useState<CodeSubmissionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
@@ -236,7 +239,35 @@ export const SessionLivePreview: React.FC<SessionLivePreviewProps> = ({ refreshK
           </div>
         </div>
 
-        <div className="w-16 text-right flex items-center justify-end gap-1.5">
+        <div className="w-auto text-right flex items-center justify-end gap-1.5">
+          {activeLanguage === 'c' && (
+            <div className="flex items-center bg-slate-200/80 dark:bg-slate-700/80 p-0.5 rounded-lg text-[10px] font-bold mr-1">
+              <button
+                type="button"
+                onClick={() => setCViewMode('console')}
+                className={`px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer ${
+                  cViewMode === 'console'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-extrabold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Terminal className="w-2.5 h-2.5" />
+                <span>Console</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCViewMode('memory')}
+                className={`px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer ${
+                  cViewMode === 'memory'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-extrabold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Layers className="w-2.5 h-2.5" />
+                <span>Memory</span>
+              </button>
+            </div>
+          )}
           {activeLanguage === 'c' && (
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300">
               Piston
@@ -249,7 +280,10 @@ export const SessionLivePreview: React.FC<SessionLivePreviewProps> = ({ refreshK
       {/* Render Frame Canvas */}
       <div className="flex-1 bg-white dark:bg-[#0B0D1B] relative overflow-hidden flex flex-col">
         {activeLanguage === 'c' ? (
-          <div className="flex-1 font-mono text-xs leading-relaxed bg-[#0D1117] text-slate-200 flex flex-col overflow-hidden relative">
+          cViewMode === 'memory' ? (
+            <CMemoryVisualizer code={executedFiles['main.c'] || Object.values(executedFiles)[0] || ''} />
+          ) : (
+            <div className="flex-1 font-mono text-xs leading-relaxed bg-[#0D1117] text-slate-200 flex flex-col overflow-hidden relative">
             {/* Collapsible stdin panel */}
             {isStdinOpen && (
               <div className="p-3 bg-[#161B22] border-b border-slate-800 text-xs shrink-0 animate-in slide-in-from-top-2 duration-150">
@@ -397,7 +431,7 @@ export const SessionLivePreview: React.FC<SessionLivePreviewProps> = ({ refreshK
               )}
             </div>
           </div>
-        ) : (
+        )) : (
           <iframe
             key={refreshKey}
             srcDoc={srcDoc}

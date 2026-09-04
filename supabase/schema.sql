@@ -455,3 +455,69 @@ BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE public.code_submissions;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+-- 10. LIVE CLASSROOM CHALLENGES & GRADING (v2.6)
+CREATE TABLE IF NOT EXISTS public.session_challenges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id UUID REFERENCES public.sessions(id) ON DELETE CASCADE,
+    room_code VARCHAR(10) NOT NULL,
+    mentor_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    starter_code TEXT NOT NULL DEFAULT '',
+    expected_output TEXT DEFAULT NULL,
+    total_marks INTEGER NOT NULL DEFAULT 10,
+    time_limit_minutes INTEGER DEFAULT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.challenge_submissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    challenge_id UUID REFERENCES public.session_challenges(id) ON DELETE CASCADE,
+    room_code VARCHAR(10) NOT NULL,
+    student_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    student_name TEXT NOT NULL,
+    student_avatar TEXT,
+    code TEXT NOT NULL,
+    stdout TEXT DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'submitted' CHECK (status IN ('submitted', 'graded')),
+    marks INTEGER DEFAULT NULL,
+    feedback TEXT DEFAULT NULL,
+    graded_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    submitted_at TIMESTAMPTZ DEFAULT NOW(),
+    graded_at TIMESTAMPTZ DEFAULT NULL
+);
+
+ALTER TABLE public.session_challenges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.challenge_submissions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view challenges in room" ON public.session_challenges;
+CREATE POLICY "Anyone can view challenges in room" ON public.session_challenges FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Mentors can manage challenges" ON public.session_challenges;
+CREATE POLICY "Mentors can manage challenges" ON public.session_challenges
+  FOR ALL USING (public.is_mentor(auth.uid()) OR auth.uid() = mentor_id);
+
+DROP POLICY IF EXISTS "Students can view own and mentors view all submissions" ON public.challenge_submissions;
+CREATE POLICY "Students can view own and mentors view all submissions" ON public.challenge_submissions
+  FOR SELECT USING (auth.uid() = student_id OR public.is_mentor(auth.uid()) OR auth.uid() IS NULL);
+
+DROP POLICY IF EXISTS "Students can submit challenges" ON public.challenge_submissions;
+CREATE POLICY "Students can submit challenges" ON public.challenge_submissions FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Mentors can grade submissions" ON public.challenge_submissions;
+CREATE POLICY "Mentors can grade submissions" ON public.challenge_submissions
+  FOR UPDATE USING (public.is_mentor(auth.uid()) OR auth.uid() = graded_by);
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.session_challenges;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.challenge_submissions;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

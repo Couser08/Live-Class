@@ -16,7 +16,7 @@ import { Lock, Radio, FlaskConical, ArrowLeft } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const InteractiveCodeEditor: React.FC = () => {
-  const { mentorCode, setMentorCode, activeLanguage, files, activeFileId, runCode, formatCurrentCode } = useCodeStore();
+  const { mentorCode, setMentorCode, setMentorCodeForFile, activeLanguage, files, activeFileId, runCode, formatCurrentCode } = useCodeStore();
   const { editorFontSize, lineNumbers, autoCloseBrackets, highlightActiveLine, editorTheme, tabSize } = useSettingsStore();
   const { user: authUser } = useAuthStore();
   const { currentSession, currentUser, userRoleInSession, isSandboxMode, toggleSandboxMode, mentorCursorPos, setMentorCursor } = useSessionStore();
@@ -51,12 +51,14 @@ export const InteractiveCodeEditor: React.FC = () => {
     broadcastTimerRef.current = window.setTimeout(() => {
       sessionService.broadcastCode(currentSession.code, {
         code: latestCodeRef.current,
+        fileId: activeFile?.id,
+        fileName: activeFile?.name,
         language: fileLang,
         cursorPos: latestCursorRef.current,
         timestamp: Date.now(),
       });
     }, 30);
-  }, [isMentor, currentSession?.code, fileLang]);
+  }, [isMentor, currentSession?.code, fileLang, activeFile?.id, activeFile?.name]);
 
   // Code change dispatcher
   const handleCodeChange = useCallback((val: string) => {
@@ -168,6 +170,20 @@ export const InteractiveCodeEditor: React.FC = () => {
     }
   }, [currentSession?.language]);
 
+  // Broadcast tab switch immediately when mentor selects another file tab
+  useEffect(() => {
+    if (isMentor && currentSession?.code && activeFile) {
+      sessionService.broadcastCode(currentSession.code, {
+        code: activeFile.content,
+        fileId: activeFile.id,
+        fileName: activeFile.name,
+        language: fileLang,
+        cursorPos: latestCursorRef.current,
+        timestamp: Date.now(),
+      });
+    }
+  }, [isMentor, currentSession?.code, activeFileId, activeFile, fileLang]);
+
   // Real-time synchronization: Students follow mentor broadcast with zero-lag smooth streaming
   useEffect(() => {
     if (!currentSession?.code) return;
@@ -177,7 +193,11 @@ export const InteractiveCodeEditor: React.FC = () => {
 
     const applyPayload = () => {
       if (pendingPayload) {
-        setMentorCode(pendingPayload.code);
+        if (pendingPayload.fileId) {
+          setMentorCodeForFile(pendingPayload.fileId, pendingPayload.code, !isSandboxMode);
+        } else {
+          setMentorCode(pendingPayload.code);
+        }
         if (pendingPayload.cursorPos) {
           setMentorCursor(pendingPayload.cursorPos);
         }
@@ -202,7 +222,7 @@ export const InteractiveCodeEditor: React.FC = () => {
       if (rafId) window.cancelAnimationFrame(rafId);
       unsubscribe?.();
     };
-  }, [currentSession?.code, isMentor, isSandboxMode, setMentorCode, setMentorCursor]);
+  }, [currentSession?.code, isMentor, isSandboxMode, setMentorCode, setMentorCodeForFile, setMentorCursor]);
 
   const getThemeBg = () => {
     switch (editorTheme) {

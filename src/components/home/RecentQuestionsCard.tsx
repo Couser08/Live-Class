@@ -6,6 +6,7 @@ import { Button } from '../common/Button';
 import { useQuestionStore } from '../../stores/questionStore';
 import { useUIStore } from '../../stores/uiStore';
 import { LiveQuestion } from '../../types/question.types';
+import { sessionService, ChatMessageItem } from '../../services/sessionService';
 import { Send, HelpCircle } from 'lucide-react';
 
 export const RecentQuestionsCard: React.FC = () => {
@@ -24,6 +25,24 @@ export const RecentQuestionsCard: React.FC = () => {
     if (!selectedQuestion || !replyText.trim()) return;
 
     answerQuestion(selectedQuestion.id, replyText);
+
+    // Broadcast answer directly back to classroom chat if linked to a session
+    if (selectedQuestion.sessionId) {
+      const replyMsg: ChatMessageItem = {
+        id: `ans_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        sessionId: selectedQuestion.sessionId,
+        senderId: 'mentor_rahul',
+        senderName: 'Rahul Tungariya (Mentor)',
+        senderRole: 'mentor',
+        senderAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        content: `💡 **Mentor Answer to @${selectedQuestion.author.name}**: ${replyText.trim()}`,
+        createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isHighlighted: true,
+      };
+      sessionService.broadcastMessage(selectedQuestion.sessionId, replyMsg);
+      sessionService.sendMessage(replyMsg, selectedQuestion.sessionId);
+    }
+
     addToast({
       type: 'success',
       title: `Reply Sent to ${selectedQuestion.author.name}`,

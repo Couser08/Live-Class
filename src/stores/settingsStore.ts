@@ -137,7 +137,7 @@ const DEFAULT_SETTINGS = {
 
   account: {
     name: 'Rahul Sharma',
-    email: 'rahul.mentor@codebuddy.live',
+    email: 'tungariyarahul08@gmail.com',
     bio: 'Senior Peer Mentor teaching HTML, C, and JavaScript 🚀',
     role: 'Mentor & Tutor',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',

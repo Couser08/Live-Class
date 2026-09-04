@@ -174,6 +174,7 @@ interface CodeState {
 
   setLanguage: (lang: SupportedLanguage) => void;
   setMentorCode: (code: string) => void;
+  setMentorCodeForFile: (fileId: string, code: string, switchActive?: boolean) => void;
   setFriendCode: (code: string) => void;
   setActiveFile: (fileId: string) => void;
   addNewFile: (name: string, language: SupportedLanguage | 'css' | 'markdown') => void;
@@ -285,6 +286,40 @@ export const useCodeStore = create<CodeState>((set, get) => {
         historySnapshots: nextSnapshots,
         historyIndex: nextSnapshots.length - 1,
         ...(autoRun ? { executedFiles: nextExecuted } : {}),
+      });
+    },
+
+    setMentorCodeForFile: (fileId: string, code: string, switchActive?: boolean) => {
+      const { files, autoRun, activeLanguage, activeFileId } = get();
+      const target = files.find((f) => f.id === fileId || f.name === fileId);
+      if (!target) {
+        get().setMentorCode(code);
+        return;
+      }
+
+      const updatedFiles = files.map((f) =>
+        f.id === target.id ? { ...f, content: code, isModified: true } : f
+      );
+
+      const nextExecuted = { ...get().executedFiles, [target.name]: code };
+      const nextActiveId = switchActive ? target.id : activeFileId;
+      const nextActiveFile = updatedFiles.find((f) => f.id === nextActiveId) || updatedFiles[0];
+
+      saveCodeState({
+        files: updatedFiles,
+        activeFileId: nextActiveId,
+        activeLanguage,
+        mentorCode: nextActiveFile.content,
+      });
+
+      set({
+        files: updatedFiles,
+        executedFiles: autoRun ? nextExecuted : get().executedFiles,
+        ...(switchActive
+          ? { activeFileId: target.id, mentorCode: code }
+          : activeFileId === target.id
+          ? { mentorCode: code }
+          : {}),
       });
     },
 

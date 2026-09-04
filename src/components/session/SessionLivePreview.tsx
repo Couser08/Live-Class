@@ -66,7 +66,7 @@ export const SessionLivePreview: React.FC<SessionLivePreviewProps> = ({ refreshK
         if (currentToken !== executionTokenRef.current) return;
         setIsRunningC(false);
       });
-  }, [executedFiles, activeLanguage, refreshKey, user?.id]);
+  }, [executedFiles, activeLanguage, refreshKey, stdin, user?.id]);
 
   // Load history from Supabase when drawer is opened
   const handleToggleHistory = async () => {

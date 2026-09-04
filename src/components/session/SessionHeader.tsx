@@ -80,14 +80,21 @@ export const SessionHeader: React.FC = () => {
     return unsubscribe;
   }, [currentSession?.code, isMentor]);
 
-  // Timer Logic
-  const [seconds, setSeconds] = useState(1455);
+  // Synchronized Timer Logic based on real session start time
+  const getElapsedSeconds = () => {
+    if (!currentSession?.startedAt) return 0;
+    return Math.max(0, Math.floor((Date.now() - currentSession.startedAt) / 1000));
+  };
+
+  const [seconds, setSeconds] = useState(getElapsedSeconds);
+
   React.useEffect(() => {
+    setSeconds(getElapsedSeconds());
     const interval = setInterval(() => {
-      setSeconds((prev) => prev + 1);
+      setSeconds(getElapsedSeconds());
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [currentSession?.startedAt]);
 
   const formatTimer = (totalSec: number) => {
     const hrs = Math.floor(totalSec / 3600);

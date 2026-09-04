@@ -29,6 +29,7 @@ export interface RoomSession {
   mentor: UserProfile;
   activeLearners: UserProfile[];
   createdAt: string;
+  startedAt?: number;
   isLive: boolean;
   shareableUrl: string;
   description?: string;

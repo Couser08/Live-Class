@@ -141,7 +141,7 @@ export async function executeCCodeViaPiston(
 
     // Automatic graceful fallback to local client-side interpreter
     try {
-      const localResult = localFallbackCCode(sourceCode, companionFiles);
+      const localResult = localFallbackCCode(sourceCode, companionFiles, stdin);
       const duration = Math.round(performance.now() - startTime);
 
       if (localResult.hasErrors) {

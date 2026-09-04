@@ -12,6 +12,7 @@ export interface SessionData {
   description?: string;
   mentorId?: string;
   mentorName?: string;
+  startedAt?: number;
 }
 
 export interface ChatMessageItem {
@@ -30,6 +31,7 @@ export interface ChatMessageItem {
 export interface RealtimeCodePayload {
   code: string;
   fileId?: string;
+  fileName?: string;
   language: string;
   cursorPos?: { line: number; col: number };
   mentorName?: string;
@@ -66,6 +68,9 @@ interface ManagedRoomChannel {
   sbChannel: any;
   listeners: Set<RoomCallbacks>;
   lastCodeTimestamp: number;
+  broadcastChan?: BroadcastChannel | null;
+  broadcastHandler?: (e: MessageEvent) => void;
+  storageHandler?: (e: StorageEvent) => void;
 }
 
 const managedRooms = new Map<string, ManagedRoomChannel>();
@@ -84,6 +89,7 @@ export const sessionService = {
     mentorId?: string;
     mentorName?: string;
     description?: string;
+    startedAt?: number;
   }): Promise<void> {
     const cleanCode = session.code.trim().toUpperCase();
     if (isSupabaseConfigured) {
@@ -122,6 +128,7 @@ export const sessionService = {
             isLive: data.is_live,
             description: data.description,
             mentorId: data.mentor_id,
+            startedAt: data.created_at ? new Date(data.created_at).getTime() : Date.now(),
           };
         }
       } catch (err) {
@@ -147,6 +154,7 @@ export const sessionService = {
             description: match.description,
             mentorId: match.mentor?.id,
             mentorName: match.mentor?.name,
+            startedAt: match.startedAt || Date.now(),
           };
         }
       }
@@ -214,18 +222,21 @@ export const sessionService = {
         }
       };
 
+      let broadcastHandler: ((e: MessageEvent) => void) | undefined;
       if (broadcastChan) {
-        broadcastChan.addEventListener('message', (e) => {
+        broadcastHandler = (e: MessageEvent) => {
           if (!e.data) return;
           if (e.data.type === 'CODE_STREAM') handlePayload('code', e.data.payload);
           else if (e.data.type === 'CHAT_MESSAGE') handlePayload('chat', e.data.payload);
           else if (e.data.type === 'NOTES_STREAM') handlePayload('notes', e.data.payload);
           else if (e.data.type === 'STUDENT_REACHED') handlePayload('reached', e.data.payload);
-        });
+        };
+        broadcastChan.addEventListener('message', broadcastHandler);
       }
 
+      let storageHandler: ((e: StorageEvent) => void) | undefined;
       if (typeof window !== 'undefined') {
-        window.addEventListener('storage', (e) => {
+        storageHandler = (e: StorageEvent) => {
           if (!e.newValue) return;
           try {
             const parsed = JSON.parse(e.newValue);
@@ -233,8 +244,13 @@ export const sessionService = {
             else if (e.key === `cb_chat_${cleanCode}`) handlePayload('chat', parsed?.message);
             else if (e.key === `cb_reached_${cleanCode}`) handlePayload('reached', parsed);
           } catch {}
-        });
+        };
+        window.addEventListener('storage', storageHandler);
       }
+
+      entry.broadcastChan = broadcastChan;
+      entry.broadcastHandler = broadcastHandler;
+      entry.storageHandler = storageHandler;
 
       if (isSupabaseConfigured) {
         try {
@@ -342,6 +358,12 @@ export const sessionService = {
     return () => {
       entry.listeners.delete(callbacks);
       if (entry.listeners.size === 0) {
+        if (entry.storageHandler && typeof window !== 'undefined') {
+          window.removeEventListener('storage', entry.storageHandler);
+        }
+        if (entry.broadcastChan && entry.broadcastHandler) {
+          entry.broadcastChan.removeEventListener('message', entry.broadcastHandler);
+        }
         if (entry.sbChannel) {
           try { supabase.removeChannel(entry.sbChannel); } catch {}
         }

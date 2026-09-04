@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useAuthStore, isMentorEmail } from '../../stores/authStore';
+import { useQuestionStore } from '../../stores/questionStore';
 import { useUIStore } from '../../stores/uiStore';
 import { sessionService, ChatMessageItem } from '../../services/sessionService';
 import { Avatar } from '../common/Avatar';
@@ -55,6 +56,14 @@ export const SessionChatPanel: React.FC = () => {
     return defaultInitialNotes;
   });
   const [isNotesPreview, setIsNotesPreview] = useState(false);
+
+  // Reset or reload notes when room code changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && currentSession?.code) {
+      const saved = localStorage.getItem(`cb_notes_${currentSession.code}`);
+      setNotesContent(saved || defaultInitialNotes);
+    }
+  }, [currentSession?.code]);
 
   const sessionId = currentSession?.id || 'active_session';
 
@@ -109,6 +118,28 @@ export const SessionChatPanel: React.FC = () => {
 
     // Add locally
     setMessages((prev) => (prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]));
+
+    // Automatically synchronize student questions to Question Store
+    if (
+      !isMentor &&
+      (text.startsWith('[Line ') ||
+        text.includes('?') ||
+        text.toLowerCase().startsWith('how ') ||
+        text.toLowerCase().startsWith('why ') ||
+        text.toLowerCase().startsWith('what '))
+    ) {
+      useQuestionStore.getState().addQuestion(
+        text,
+        {
+          id: activeUser.id,
+          name: activeUser.name,
+          role: 'student',
+          isOnline: true,
+          avatarUrl: activeUser.avatarUrl,
+        },
+        currentSession?.code || sessionId
+      );
+    }
 
     // Persist to Supabase and local storage
     sessionService.sendMessage(newMsg, currentSession?.code);

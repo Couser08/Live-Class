@@ -12,9 +12,141 @@ export interface CExecutionResult {
   errors?: string[];
 }
 
+function injectLoopGuards(code: string): string {
+  let result = '';
+  let i = 0;
+  const n = code.length;
+
+  while (i < n) {
+    // Skip string literals
+    if (code[i] === '"' || code[i] === "'") {
+      const quote = code[i];
+      result += quote;
+      i++;
+      while (i < n && code[i] !== quote) {
+        if (code[i] === '\\' && i + 1 < n) {
+          result += code[i++];
+        }
+        if (i < n) result += code[i++];
+      }
+      if (i < n) result += code[i++];
+      continue;
+    }
+
+    // Skip single-line comments
+    if (code[i] === '/' && code[i + 1] === '/') {
+      while (i < n && code[i] !== '\n') {
+        result += code[i++];
+      }
+      continue;
+    }
+
+    // Skip multi-line comments
+    if (code[i] === '/' && code[i + 1] === '*') {
+      result += '/*';
+      i += 2;
+      while (i < n && !(code[i - 1] === '*' && code[i] === '/')) {
+        result += code[i++];
+      }
+      if (i < n) result += code[i++];
+      continue;
+    }
+
+    const prevChar = i > 0 ? code[i - 1] : ' ';
+    const isWordBoundary = !/[a-zA-Z0-9_]/.test(prevChar);
+
+    // Check for "while" or "for"
+    const matchWhile = isWordBoundary && code.slice(i).startsWith('while');
+    const matchFor = isWordBoundary && code.slice(i).startsWith('for');
+    const matchDo = isWordBoundary && code.slice(i).startsWith('do');
+
+    if (matchWhile || matchFor) {
+      const kw = matchWhile ? 'while' : 'for';
+      // Look back to see if this while is part of a do-while: e.g. '} while(...);'
+      let isDoWhileTail = false;
+      if (matchWhile) {
+        let backIdx = i - 1;
+        while (backIdx >= 0 && /\s/.test(code[backIdx])) backIdx--;
+        if (backIdx >= 0 && code[backIdx] === '}') {
+          isDoWhileTail = true;
+        }
+      }
+
+      result += kw;
+      i += kw.length;
+
+      // Skip whitespace to '('
+      while (i < n && /\s/.test(code[i])) {
+        result += code[i++];
+      }
+
+      if (i < n && code[i] === '(') {
+        result += '(';
+        i++;
+        let parenDepth = 1;
+        while (i < n && parenDepth > 0) {
+          if (code[i] === '(') parenDepth++;
+          else if (code[i] === ')') parenDepth--;
+          result += code[i++];
+        }
+
+        // Skip whitespace after ')'
+        while (i < n && /\s/.test(code[i])) {
+          result += code[i++];
+        }
+
+        if (isDoWhileTail) {
+          // In do ... while(cond);, leave as is
+          continue;
+        }
+
+        // If next char is '{'
+        if (i < n && code[i] === '{') {
+          result += '{ __tick(); ';
+          i++;
+        } else if (i < n && code[i] === ';') {
+          // Empty loop: while(1); -> while(1) { __tick(); }
+          result += '{ __tick(); }';
+          i++;
+        } else if (i < n) {
+          // Single-statement loop without braces: while(cond) stmt;
+          let stmt = '';
+          while (i < n && code[i] !== ';') {
+            stmt += code[i++];
+          }
+          if (i < n && code[i] === ';') {
+            stmt += ';';
+            i++;
+          }
+          result += `{ __tick(); ${stmt} }`;
+        }
+      }
+      continue;
+    }
+
+    if (matchDo) {
+      result += 'do';
+      i += 2;
+      while (i < n && /\s/.test(code[i])) {
+        result += code[i++];
+      }
+      if (i < n && code[i] === '{') {
+        result += '{ __tick(); ';
+        i++;
+      }
+      continue;
+    }
+
+    result += code[i++];
+  }
+
+  return result;
+}
+
 export function executeCCode(
   sourceCode: string,
-  headerFiles?: Record<string, string>
+  headerFiles?: Record<string, string>,
+  stdinInput: string = ''
 ): CExecutionResult {
   const startTime = performance.now();
 
@@ -181,8 +313,16 @@ export function executeCCode(
       stdoutBuffer += text;
     };
 
+    // Stdin tokens for simulated input
+    const stdinTokens = stdinInput ? stdinInput.trim().split(/\s+/).filter(Boolean) : [];
+    let stdinIdx = 0;
+
     // Standard scanf simulation for classroom code
     const customScanf = (_fmt: string, ..._args: any[]) => {
+      if (stdinIdx < stdinTokens.length) {
+        stdinIdx++;
+        return 1;
+      }
       return 1;
     };
 
@@ -193,12 +333,27 @@ export function executeCCode(
     const floor = Math.floor;
     const ceil = Math.ceil;
 
-    // Construct sandboxed execution wrapper
+    // Inject loop iteration guards to prevent browser UI freezing
+    const guardedJsCode = injectLoopGuards(jsCode);
+
+    // Construct sandboxed execution wrapper with iteration & time limits
     const runnerScript = `
       "use strict";
+      let __stepCount = 0;
+      let __lastTimeCheck = Date.now();
+      function __tick() {
+        if (++__stepCount % 500 === 0) {
+          if (Date.now() - __lastTimeCheck > 2500) {
+            throw new Error("Time Limit Exceeded: Execution took longer than 2.5 seconds (infinite loop detected)");
+          }
+        }
+        if (__stepCount > 100000) {
+          throw new Error("Time Limit Exceeded: Loop iteration limit exceeded 100,000 steps (infinite loop detected)");
+        }
+      }
       const print = typeof printf === 'function' ? printf : function() {};
       const alert = function() {};
-      ${jsCode}
+      ${guardedJsCode}
       if (typeof main === 'function') {
         main();
       }

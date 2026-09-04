@@ -293,35 +293,97 @@ ALTER TABLE public.session_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.code_submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shared_access ENABLE ROW LEVEL SECURITY;
 
+-- Helper function to check if the current user is the mentor
+CREATE OR REPLACE FUNCTION public.is_mentor(p_user_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = p_user_id AND (role = 'mentor' OR LOWER(email) = 'tungariyarahul08@gmail.com')
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
 -- Profiles Policies
 DROP POLICY IF EXISTS "Allow public read access to profiles" ON public.profiles;
 CREATE POLICY "Allow public read access to profiles" ON public.profiles FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Allow public insert/update to profiles" ON public.profiles;
-CREATE POLICY "Allow public insert/update to profiles" ON public.profiles FOR ALL USING (true);
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+CREATE POLICY "Users can update own profile" ON public.profiles
+  FOR UPDATE USING (auth.uid() = id OR public.is_mentor(auth.uid()))
+  WITH CHECK (auth.uid() = id OR public.is_mentor(auth.uid()));
+
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile" ON public.profiles
+  FOR INSERT WITH CHECK (auth.uid() = id OR public.is_mentor(auth.uid()) OR auth.uid() IS NULL);
 
 -- Sessions Policies
 DROP POLICY IF EXISTS "Allow public read access to sessions" ON public.sessions;
 CREATE POLICY "Allow public read access to sessions" ON public.sessions FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Allow public insert/update to sessions" ON public.sessions;
-CREATE POLICY "Allow public insert/update to sessions" ON public.sessions FOR ALL USING (true);
+DROP POLICY IF EXISTS "Mentors or owners can insert sessions" ON public.sessions;
+CREATE POLICY "Mentors or owners can insert sessions" ON public.sessions
+  FOR INSERT WITH CHECK (public.is_mentor(auth.uid()) OR mentor_id = auth.uid() OR auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "Mentors or owners can update sessions" ON public.sessions;
+CREATE POLICY "Mentors or owners can update sessions" ON public.sessions
+  FOR UPDATE USING (public.is_mentor(auth.uid()) OR mentor_id = auth.uid());
+
+DROP POLICY IF EXISTS "Mentors or owners can delete sessions" ON public.sessions;
+CREATE POLICY "Mentors or owners can delete sessions" ON public.sessions
+  FOR DELETE USING (public.is_mentor(auth.uid()) OR mentor_id = auth.uid());
 
 -- Session Participants Policies
 DROP POLICY IF EXISTS "Allow public access to session_participants" ON public.session_participants;
-CREATE POLICY "Allow public access to session_participants" ON public.session_participants FOR ALL USING (true);
+DROP POLICY IF EXISTS "Anyone can view session participants" ON public.session_participants;
+CREATE POLICY "Anyone can view session participants" ON public.session_participants
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Participants can manage their presence" ON public.session_participants;
+CREATE POLICY "Participants can manage their presence" ON public.session_participants
+  FOR ALL USING (auth.uid() = user_id OR public.is_mentor(auth.uid()) OR auth.uid() IS NULL);
 
 -- Session Files Policies
 DROP POLICY IF EXISTS "Allow public access to session_files" ON public.session_files;
-CREATE POLICY "Allow public access to session_files" ON public.session_files FOR ALL USING (true);
+DROP POLICY IF EXISTS "Anyone can view session files" ON public.session_files;
+CREATE POLICY "Anyone can view session files" ON public.session_files
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Participants can edit session files" ON public.session_files;
+CREATE POLICY "Participants can edit session files" ON public.session_files
+  FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Participants can update session files" ON public.session_files;
+CREATE POLICY "Participants can update session files" ON public.session_files
+  FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Mentors can delete session files" ON public.session_files;
+CREATE POLICY "Mentors can delete session files" ON public.session_files
+  FOR DELETE USING (public.is_mentor(auth.uid()));
 
 -- Session Messages Policies
 DROP POLICY IF EXISTS "Allow public access to session_messages" ON public.session_messages;
-CREATE POLICY "Allow public access to session_messages" ON public.session_messages FOR ALL USING (true);
+DROP POLICY IF EXISTS "Anyone can view session messages" ON public.session_messages;
+CREATE POLICY "Anyone can view session messages" ON public.session_messages
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Anyone can post session messages" ON public.session_messages;
+CREATE POLICY "Anyone can post session messages" ON public.session_messages
+  FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Senders or mentors can delete messages" ON public.session_messages;
+CREATE POLICY "Senders or mentors can delete messages" ON public.session_messages
+  FOR DELETE USING (sender_id = auth.uid() OR public.is_mentor(auth.uid()));
 
 -- Session Notes Policies
 DROP POLICY IF EXISTS "Allow public access to session_notes" ON public.session_notes;
-CREATE POLICY "Allow public access to session_notes" ON public.session_notes FOR ALL USING (true);
+DROP POLICY IF EXISTS "Anyone can view session notes" ON public.session_notes;
+CREATE POLICY "Anyone can view session notes" ON public.session_notes
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Participants can create and edit session notes" ON public.session_notes;
+CREATE POLICY "Participants can create and edit session notes" ON public.session_notes
+  FOR ALL USING (true);
 
 -- Code Submissions Policies
 DROP POLICY IF EXISTS "Users can view own or shared submissions" ON public.code_submissions;

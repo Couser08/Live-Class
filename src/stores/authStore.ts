@@ -262,9 +262,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: updatedProfile });
 
     if (typeof window !== 'undefined') {
-      import('./sessionStore').then(({ useSessionStore }) => {
-        useSessionStore.getState().setCurrentUser(updatedProfile);
-      });
+      window.dispatchEvent(new CustomEvent('codebuddy_auth_change', { detail: updatedProfile }));
     }
 
     if (isSupabaseConfigured && currentUser.id) {

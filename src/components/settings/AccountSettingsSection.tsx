@@ -5,7 +5,9 @@ import { Avatar } from '../common/Avatar';
 import { Camera, Check, ShieldCheck, KeyRound } from 'lucide-react';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useSessionStore } from '../../stores/sessionStore';
+import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 const AVATAR_PRESETS = [
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
@@ -17,17 +19,19 @@ const AVATAR_PRESETS = [
 export const AccountSettingsSection: React.FC = () => {
   const { account, updateAccount } = useSettingsStore();
   const { setCurrentUser } = useSessionStore();
+  const { user: authUser } = useAuthStore();
   const { addToast } = useUIStore();
 
   const [formData, setFormData] = useState({
-    name: account.name,
-    email: account.email,
+    name: account.name || authUser?.name || 'Rahul Sharma',
+    email: account.email || authUser?.email || 'tungariyarahul08@gmail.com',
     bio: account.bio,
     role: account.role,
-    avatarUrl: account.avatarUrl,
+    avatarUrl: account.avatarUrl || authUser?.avatarUrl || AVATAR_PRESETS[0],
   });
 
   const [isSaved, setIsSaved] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +40,22 @@ export const AccountSettingsSection: React.FC = () => {
       name: formData.name,
       avatarUrl: formData.avatarUrl,
     });
+
+    // Synchronize across authStore and localStorage
+    const currentAuth = useAuthStore.getState().user;
+    if (currentAuth) {
+      const updatedAuth = {
+        ...currentAuth,
+        name: formData.name,
+        avatarUrl: formData.avatarUrl,
+      };
+      useAuthStore.setState({ user: updatedAuth });
+      localStorage.setItem('codebuddy_auth_user', JSON.stringify(updatedAuth));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('codebuddy_auth_change', { detail: updatedAuth }));
+      }
+    }
+
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
     addToast({
@@ -43,6 +63,37 @@ export const AccountSettingsSection: React.FC = () => {
       title: 'Profile Updated',
       description: 'Your account profile changes have been saved.',
     });
+  };
+
+  const handleResetPassword = async () => {
+    if (!formData.email) return;
+    setIsResettingPassword(true);
+
+    try {
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.auth.resetPasswordForEmail(formData.email);
+        if (error) throw error;
+        addToast({
+          type: 'success',
+          title: 'Password Reset Sent',
+          description: `Password recovery link sent to ${formData.email}.`,
+        });
+      } else {
+        addToast({
+          type: 'info',
+          title: 'Offline / Demo Mode',
+          description: `Password recovery link simulated for ${formData.email}.`,
+        });
+      }
+    } catch (err: any) {
+      addToast({
+        type: 'error',
+        title: 'Reset Failed',
+        description: err.message || 'Could not send reset link.',
+      });
+    } finally {
+      setIsResettingPassword(false);
+    }
   };
 
   return (
@@ -138,10 +189,11 @@ export const AccountSettingsSection: React.FC = () => {
           </div>
           <button
             type="button"
-            onClick={() => addToast({ type: 'info', title: 'Security', description: 'Password reset link sent to your email.' })}
-            className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors cursor-pointer"
+            onClick={handleResetPassword}
+            disabled={isResettingPassword}
+            className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors cursor-pointer disabled:opacity-50"
           >
-            Change Password
+            {isResettingPassword ? 'Sending...' : 'Change Password'}
           </button>
         </div>
 

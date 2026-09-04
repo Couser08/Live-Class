@@ -127,6 +127,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       ? crypto.randomUUID()
       : 'a0000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0');
 
+    const nowTime = Date.now();
     const newSession: RoomSession = {
       id: sessionUuid,
       code,
@@ -136,6 +137,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       mentor,
       activeLearners: [],
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      startedAt: nowTime,
       isLive: true,
       shareableUrl,
     };
@@ -156,6 +158,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       language,
       mentorId: mentor.id,
       mentorName: mentor.name,
+      startedAt: nowTime,
     });
 
     // Switch workspace editor files to the selected language template!
@@ -197,6 +200,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       },
       activeLearners: [activeUser],
       createdAt: 'Active Now',
+      startedAt: sessionData.startedAt || Date.now(),
       isLive: true,
       shareableUrl: `${window.location.origin}/join/${sessionData.code}?pin=${sessionData.pin}`,
       description: sessionData.description,
@@ -345,3 +349,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     });
   },
 }));
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('codebuddy_auth_change', (e: any) => {
+    if (e.detail) {
+      useSessionStore.getState().setCurrentUser(e.detail);
+    }
+  });
+}
